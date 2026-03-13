@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(for pkg in cli core parser-typescript renderer-markdown)",
+      "Bash(do echo \"=== $pkg ===\")",
+      "Read(//f/docgen/packages/**)",
+      "Bash(done)",
+      "Bash(do echo \"=== $pkg/src ===\")",
+      "Read(//f/docgen/packages/$pkg/**)",
+      "Bash(xargs wc -l)",
+      "Bash(while read f)",
+      "Bash(do wc -l \"$f\")",
+      "Bash(find \"F:/docgen/docs\" -name \"*.md\" -exec wc -l {} +)"
+    ]
+  }
+}

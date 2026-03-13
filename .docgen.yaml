@@ -1,0 +1,77 @@
+# DocGen Configuration
+# https://github.com/docgen/docgen
+
+project:
+  name: my-app
+  version: 1.0.0
+  description: "My application"
+
+languages:
+  - name: typescript
+    source: src
+    include:
+      - "**/*.ts"
+      - "**/*.tsx"
+    exclude:
+      - "**/*.test.ts"
+      - "**/*.spec.ts"
+      - "**/node_modules/**"
+      - "**/dist/**"
+    parser: "@docgen/parser-typescript"
+
+  # - name: java
+  #   source: src/main/java
+  #   include: ["**/*.java"]
+  #   exclude: ["**/test/**", "**/generated/**"]
+  #   parser: "@docgen/parser-java"
+
+  # - name: python
+  #   source: scripts
+  #   include: ["**/*.py"]
+  #   exclude: ["**/test_*", "**/*_test.py"]
+  #   parser: "@docgen/parser-python"
+
+output:
+  markdown:
+    enabled: true
+    outputDir: docs/api
+    includeSourceLinks: true
+    collapsibleSections: true
+
+  # html:
+  #   enabled: true
+  #   engine: docusaurus
+  #   outputDir: docs-site/
+  #   sidebar: auto
+  #   search: true
+
+  # pdf:
+  #   enabled: false
+  #   engine: puppeteer
+  #   outputDir: docs/pdf/
+
+  # confluence:
+  #   enabled: false
+  #   baseUrl: https://your-org.atlassian.net
+  #   spaceKey: DOCS
+  #   auth: env:CONFLUENCE_TOKEN
+
+validation:
+  coverage:
+    threshold: 80
+    enforce: false
+    exclude:
+      - "**/internal/**"
+  rules:
+    require-description: warn
+    require-param-docs: warn
+    require-return-docs: off
+    require-examples: off
+
+adr:
+  directory: docs/decisions
+
+changelog:
+  conventionalCommits: true
+  groupBy: type
+  outputFile: CHANGELOG.md

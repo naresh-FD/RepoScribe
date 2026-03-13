@@ -1,0 +1,23 @@
+node_modules/
+dist/
+*.tsbuildinfo
+.turbo/
+.docgen-snapshot.json
+
+# Output directories
+docs/api/
+docs-site/build/
+docs/pdf/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env
+.env
+.env.local
