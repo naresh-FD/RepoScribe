@@ -5,28 +5,28 @@
  */
 
 import chalk from "chalk";
-import { PipelineResult } from "@docgen/core";
+import { GenerateResult } from "@docgen/core";
 
 export interface Reporter {
-  report(result: PipelineResult): void;
+  report(result: GenerateResult): void;
 }
 
 /**
  * GitHub Actions reporter — outputs annotations
  */
 export class GitHubActionsReporter implements Reporter {
-  report(result: PipelineResult): void {
+  report(result: GenerateResult): void {
     // Output stats as step summary
     const summary = [
       "## DocGen Report",
       "",
       `| Metric | Value |`,
       `|--------|-------|`,
-      `| Modules | ${result.stats.modulesTotal} |`,
-      `| Members | ${result.stats.membersTotal} |`,
-      `| Coverage | ${result.stats.coverageAverage}% |`,
-      `| Files | ${result.stats.filesGenerated} |`,
-      `| Time | ${result.stats.totalTimeMs}ms |`,
+      `| Modules | ${result.docir.modules.length} |`,
+      `| Members | ${result.docir.modules.reduce((s, m) => s + m.members.length, 0)} |`,
+      `| Coverage | ${result.coverage.overall}% |`,
+      `| Files | ${result.artifacts.length} |`,
+      `| Time | ${result.duration}ms |`,
     ].join("\n");
 
     // Write to step summary if available
@@ -36,22 +36,20 @@ export class GitHubActionsReporter implements Reporter {
     }
 
     // Output errors as annotations
-    for (const err of result.errors) {
-      console.log(`::error title=DocGen ${err.phase}::${err.message}`);
-    }
+    // TODO: result.errors does not exist in GenerateResult, errors are handled during validation before generate.
 
     // Output warnings for low coverage modules
-    for (const mod of result.ir.modules) {
-      if (mod.coverage.total < 50) {
+    for (const mod of result.docir.modules) {
+      if (mod.coverage.overall < 50) {
         console.log(
-          `::warning file=${mod.filePath}::Low doc coverage (${mod.coverage.total}%) for ${mod.name}`
+          `::warning file=${mod.filePath}::Low doc coverage (${mod.coverage.overall}%) for ${mod.name}`
         );
       }
     }
 
     // Set output
-    console.log(`::set-output name=coverage::${result.stats.coverageAverage}`);
-    console.log(`::set-output name=modules::${result.stats.modulesTotal}`);
+    console.log(`::set-output name=coverage::${result.coverage.overall}`);
+    console.log(`::set-output name=modules::${result.docir.modules.length}`);
   }
 }
 
@@ -59,17 +57,21 @@ export class GitHubActionsReporter implements Reporter {
  * JSON reporter for CI consumption
  */
 export class JsonReporter implements Reporter {
-  report(result: PipelineResult): void {
+  report(result: GenerateResult): void {
     console.log(
       JSON.stringify(
         {
-          success: result.success,
-          stats: result.stats,
-          errors: result.errors,
-          modules: result.ir.modules.map((m) => ({
+          success: result.coverage.passed,
+          stats: {
+            duration: result.duration,
+            modulesTotal: result.docir.modules.length,
+            filesGenerated: result.artifacts.length,
+          },
+          errors: [], // Errors handled at validation/build time
+          modules: result.docir.modules.map((m: any) => ({
             id: m.id,
             name: m.name,
-            coverage: m.coverage.total,
+            coverage: m.coverage.overall,
             undocumented: m.coverage.undocumented,
           })),
         },

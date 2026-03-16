@@ -1,19 +1,16 @@
 @echo off
 setlocal
 
-REM Get the directory where this batch file is located
-set DOCGEN_DIR=%~dp0
+:: Ensure dependencies are installed
+echo Installing dependencies...
+call npm ci
 
-REM Check if dependencies are installed in the docgen folder
-IF NOT EXIST "%DOCGEN_DIR%node_modules" (
-    echo [docgen] Installing dependencies...
-    pushd "%DOCGEN_DIR%"
-    call npm install
-    popd
-)
+:: Build the packages
+echo Building docgen packages...
+call npm run build
 
-REM Execute the CLI directly from source using tsx
-echo [docgen] Executing...
-call npx --yes tsx "%DOCGEN_DIR%packages\cli\src\index.ts" %*
+:: Run docgen (passing any additional arguments)
+echo Running docgen...
+call npx docgen %*
 
 endlocal
