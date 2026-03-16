@@ -15,11 +15,11 @@ export async function initCommand(options: InitOptions): Promise<void> {
     process.exit(1);
   }
 
-  // Auto-detect languages in the project
+  // Auto-detect supported project types
   const detected = detectLanguages(workDir);
 
   if (detected.length === 0) {
-    console.warn("Warning: No supported languages detected. Creating minimal config.");
+    console.warn("Warning: No React/TypeScript or Java/Spring Boot sources detected. Creating a React-oriented starter config.");
     detected.push({ name: "typescript", source: "src" });
   }
 
@@ -56,7 +56,7 @@ function detectLanguages(
     }
   }
 
-  // Check for TypeScript
+  // Check for React/TypeScript sources
   const tsDirs = ["src", "lib", "packages"];
   for (const dir of tsDirs) {
     const fullPath = path.join(workDir, dir);
@@ -76,16 +76,6 @@ function detectLanguages(
     fs.existsSync(path.join(workDir, "tsconfig.json"))
   ) {
     languages.push({ name: "typescript", source: "src" });
-  }
-
-  // Check for Python
-  const pyDirs = ["src", "lib", "."];
-  for (const dir of pyDirs) {
-    const fullPath = path.join(workDir, dir);
-    if (fs.existsSync(fullPath) && hasFilesWithExtension(fullPath, ".py")) {
-      languages.push({ name: "python", source: dir });
-      break;
-    }
   }
 
   return languages;

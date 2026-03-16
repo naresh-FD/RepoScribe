@@ -2,9 +2,9 @@
 # https://github.com/docgen/docgen
 
 project:
-  name: DocGen
+  name: RepoScribe
   version: 1.0.0
-  description: "Universal multi-language documentation generator"
+  description: "Documentation generator focused on React and Java Spring Boot projects"
 
 languages:
   - name: typescript
@@ -20,17 +20,12 @@ languages:
       - "**/dist/**"
     parser: "@docgen/parser-typescript"
 
+  # Spring Boot target configuration
   # - name: java
   #   source: src/main/java
   #   include: ["**/*.java"]
   #   exclude: ["**/test/**", "**/generated/**"]
   #   parser: "@docgen/parser-java"
-
-  # - name: python
-  #   source: scripts
-  #   include: ["**/*.py"]
-  #   exclude: ["**/test_*", "**/*_test.py"]
-  #   parser: "@docgen/parser-python"
 
 output:
   markdown:
@@ -39,25 +34,12 @@ output:
     includeSourceLinks: true
     collapsibleSections: true
 
-  # html:
-  #   enabled: true
-  #   engine: docusaurus
-  #   outputDir: docs-site/
-  #   sidebar: auto
-  #   search: true
-
   pdf:
     enabled: true
     engine: puppeteer
     outputDir: docs/pdf
     options:
       fileName: docgen-components.pdf
-
-  # confluence:
-  #   enabled: false
-  #   baseUrl: https://your-org.atlassian.net
-  #   spaceKey: DOCS
-  #   auth: env:CONFLUENCE_TOKEN
 
 validation:
   coverage:

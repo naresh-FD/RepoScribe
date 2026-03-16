@@ -24,7 +24,7 @@ You can also use a Git URL instead of `file:../RepoScribe` if you keep RepoScrib
 
 3. Add a `.docgen.yaml` in the target repo.
 
-Example for a typical React or TypeScript app:
+Example for a typical React app:
 
 ```yaml
 project:
@@ -117,3 +117,40 @@ That command still runs from the target repo and reads the target repo's `.docge
 - RepoScribe follows the current working directory, so always run the command from the target repo root.
 - If your code lives under `packages`, `app`, or another folder, change the `.docgen.yaml` `languages[].source` value to match.
 - The current TypeScript parser documents exported classes, interfaces, enums, type aliases, functions, and exported function-style components.
+
+## Spring Boot Starter Example
+
+Use this shape when you are preparing a Java Spring Boot repository for upcoming Java parser support:
+
+```yaml
+project:
+  name: spring-app
+  version: 1.0.0
+  description: "Spring Boot project documentation"
+
+languages:
+  - name: java
+    source: src/main/java
+    include:
+      - "**/*.java"
+    exclude:
+      - "**/test/**"
+      - "**/generated/**"
+    parser: "@docgen/parser-java"
+
+output:
+  markdown:
+    enabled: true
+    outputDir: docs/components
+
+  pdf:
+    enabled: true
+    outputDir: docs/pdf
+    options:
+      fileName: spring-boot-docs.pdf
+```
+
+Current status:
+
+- React and TypeScript work today.
+- Java Spring Boot is the target second path and the parser is still to be implemented.

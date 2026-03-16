@@ -2,7 +2,7 @@
   "name": "docgen",
   "version": "1.0.0",
   "private": true,
-  "description": "Universal multi-language documentation generator",
+  "description": "Documentation generator focused on React and Java Spring Boot projects",
   "bin": {
     "reposcribe-docs": "scripts/generate-docs.mjs",
     "reposcribe-cli": "scripts/run-docgen.cjs"

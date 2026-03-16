@@ -11,7 +11,7 @@ const program = new Command();
 
 program
   .name("docgen")
-  .description("Universal multi-language documentation generator")
+  .description("Documentation generator for React and Java Spring Boot projects")
   .version("1.0.0");
 
 program
