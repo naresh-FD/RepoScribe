@@ -78,7 +78,21 @@ async function resolvePlugin(
   try {
     return loadPluginFromPackage(pluginName, options.workDir);
   } catch {
-    // Strategy 3: Look in plugin directories
+    // Strategy 3: local workspace package resolution for the monorepo
+    if (pluginName.startsWith("@docgen/")) {
+      try {
+        const workspacePath = path.join(
+          options.workDir,
+          "packages",
+          pluginName.replace("@docgen/", "")
+        );
+        return loadPluginFromPath(workspacePath);
+      } catch {
+        // Fall through to custom plugin directories below
+      }
+    }
+
+    // Strategy 4: Look in plugin directories
     if (options.pluginDirs) {
       for (const dir of options.pluginDirs) {
         try {

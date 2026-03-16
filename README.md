@@ -16,15 +16,17 @@ One CLI. One config. All your languages.
 ## Quick Start
 
 ```bash
-# Initialize in your repo
-npx docgen init
-
-# Generate documentation
-npx docgen generate
+# Generate per-component Markdown docs and a combined PDF
+npm run docs:generate
 
 # Check coverage (CI gate)
 npx docgen validate --json
 ```
+
+Generated output:
+
+- `docs/components` - one Markdown file per exported module/component plus index files
+- `docs/pdf/docgen-components.pdf` - combined PDF for the whole codebase
 
 ## Using in Other Repositories
 

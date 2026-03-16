@@ -30,6 +30,9 @@ export async function generateCommand(options: GenerateOptions): Promise<void> {
       if (config.output.html.enabled) {
         config.output.html.outputDir = path.join(options.output, "html");
       }
+      if (config.output.pdf.enabled) {
+        config.output.pdf.outputDir = path.join(options.output, "pdf");
+      }
     }
 
     const orchestrator = new Orchestrator({

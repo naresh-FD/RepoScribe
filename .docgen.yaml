@@ -2,19 +2,20 @@
 # https://github.com/docgen/docgen
 
 project:
-  name: my-app
+  name: DocGen
   version: 1.0.0
-  description: "My application"
+  description: "Universal multi-language documentation generator"
 
 languages:
   - name: typescript
-    source: src
+    source: packages
     include:
       - "**/*.ts"
       - "**/*.tsx"
     exclude:
       - "**/*.test.ts"
       - "**/*.spec.ts"
+      - "**/*.d.ts"
       - "**/node_modules/**"
       - "**/dist/**"
     parser: "@docgen/parser-typescript"
@@ -34,7 +35,7 @@ languages:
 output:
   markdown:
     enabled: true
-    outputDir: docs/api
+    outputDir: docs/components
     includeSourceLinks: true
     collapsibleSections: true
 
@@ -45,10 +46,12 @@ output:
   #   sidebar: auto
   #   search: true
 
-  # pdf:
-  #   enabled: false
-  #   engine: puppeteer
-  #   outputDir: docs/pdf/
+  pdf:
+    enabled: true
+    engine: puppeteer
+    outputDir: docs/pdf
+    options:
+      fileName: docgen-components.pdf
 
   # confluence:
   #   enabled: false

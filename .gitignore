@@ -6,8 +6,12 @@ dist/
 
 # Output directories
 docs/api/
+docs/components/
 docs-site/build/
 docs/pdf/
+
+# Local workspace state
+.claude/worktrees/
 
 # IDE
 .idea/

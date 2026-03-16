@@ -1,70 +1,119 @@
-# Using DocGen in Other Repositories
+# Using RepoScribe in Other Repositories
 
-This guide explains how to use your local `docgen` installation to generate documentation for other repositories on your machine.
+This guide shows the simplest way to use RepoScribe from another repository with one line in that repo's `package.json`.
 
-Since `docgen` is under active development and may have TypeScript compilation errors that prevent standard `npm link` installation, we've provided a resilient execution method.
+## What You Add In The Target Repo
 
-## Recommended Method: Using `docgen.bat`
+1. Install RepoScribe as a dev dependency.
 
-The root directory contains a `docgen.bat` script specifically designed to:
-1. Automatically install dependencies if they are missing.
-2. Resolve the correct `docgen` path regardless of where you call the script from.
-3. Use `tsx` to execute the TypeScript source directly, bypassing any `tsc` build errors.
-
-### Option A: Call via Absolute Path
-
-The simplest way to use `docgen` is to call the batch script using its full path. 
-
-Open a command prompt inside your target repository and run:
-
-```cmd
-f:\docgen\docgen.bat generate
+```bash
+npm install --save-dev file:../RepoScribe
 ```
 
-### Option B: Add to Windows PATH (Best Developer Experience)
+You can also use a Git URL instead of `file:../RepoScribe` if you keep RepoScribe in Git.
 
-If you plan to use `docgen` frequently across multiple repositories, adding it to your system's `PATH` will allow you to use it like a native tool.
-
-1. Open the Windows Start menu.
-2. Search for **Environment Variables** and select **"Edit the system environment variables"**.
-3. In the System Properties window, click the **Environment Variables...** button.
-4. Under the **User variables** section, find and select **`Path`**, then click **Edit...**.
-5. Click **New** and paste the path to your docgen directory: `f:\docgen`
-6. Click **OK** on all windows to save the changes.
-7. Open a **new** command prompt in your target repository.
-
-You can now use `docgen` just by typing:
-
-```cmd
-docgen.bat generate
-```
-
-## Alternative Method: Direct `npx` Execution
-
-If you prefer not to use the batch script, or if you want to add `docgen` as a package script in your target repository's `package.json`, you can run the execution command directly:
+2. Add one script in the target repo `package.json`.
 
 ```json
 {
   "scripts": {
-    "docs": "npx --yes tsx f:/docgen/packages/cli/src/index.ts generate"
+    "docs:generate": "reposcribe-docs"
   }
 }
 ```
 
-Then you can run `npm run docs` in your target repository.
+3. Add a `.docgen.yaml` in the target repo.
 
-## Future Standard Method: `npm link`
+Example for a typical React or TypeScript app:
 
-Once the `docgen` tool achieves a stable build state (i.e., `npm run build` succeeds locally without TypeScript errors), you can switch to the standard Node.js global linking method.
+```yaml
+project:
+  name: my-app
+  version: 1.0.0
+  description: "Project documentation"
 
-1. In the `f:\docgen\packages\cli` directory, run:
-   ```cmd
-   npm link
-   ```
-2. Now `docgen` is globally installed on your system.
-3. In any other repository, you can simply run:
-   ```cmd
-   docgen generate
-   ```
+languages:
+  - name: typescript
+    source: src
+    include:
+      - "**/*.ts"
+      - "**/*.tsx"
+    exclude:
+      - "**/*.test.ts"
+      - "**/*.spec.ts"
+      - "**/*.d.ts"
+      - "**/node_modules/**"
+      - "**/dist/**"
+    parser: "@docgen/parser-typescript"
 
-*Note: Until the compilation errors in `@docgen/renderer-markdown` and other packages are resolved, `npm link` will likely fail during its automatic build step, which is why the `docgen.bat` approach is recommended.*
+output:
+  markdown:
+    enabled: true
+    outputDir: docs/components
+    includeSourceLinks: true
+    collapsibleSections: true
+
+  pdf:
+    enabled: true
+    engine: puppeteer
+    outputDir: docs/pdf
+    options:
+      fileName: components.pdf
+
+validation:
+  coverage:
+    threshold: 80
+    enforce: false
+  rules:
+    require-description: warn
+    require-param-docs: warn
+    require-return-docs: off
+    require-examples: off
+
+adr:
+  directory: docs/decisions
+
+changelog:
+  conventionalCommits: true
+  groupBy: type
+  outputFile: CHANGELOG.md
+```
+
+4. Run the script from the target repo.
+
+```bash
+npm run docs:generate
+```
+
+## What Happens When It Runs
+
+- RepoScribe builds itself from its own package folder.
+- RepoScribe reads `.docgen.yaml` from the repo where you run the command.
+- Separate Markdown files are generated under `docs/components`.
+- One combined PDF is generated under `docs/pdf`.
+
+## Output Paths
+
+- `docs/components/README.md`
+- `docs/components/<language>/<component>.md`
+- `docs/pdf/components.pdf`
+
+## Direct CLI Option
+
+If you want the lower-level CLI instead of the high-level generator script, use:
+
+```json
+{
+  "scripts": {
+    "docs:generate": "reposcribe-cli generate --format markdown pdf"
+  }
+}
+```
+
+That command still runs from the target repo and reads the target repo's `.docgen.yaml`.
+
+## Notes
+
+- RepoScribe follows the current working directory, so always run the command from the target repo root.
+- If your code lives under `packages`, `app`, or another folder, change the `.docgen.yaml` `languages[].source` value to match.
+- The current TypeScript parser documents exported classes, interfaces, enums, type aliases, functions, and exported function-style components.

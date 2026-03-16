@@ -18,6 +18,7 @@ import {
   ClassDeclaration,
   InterfaceDeclaration,
   FunctionDeclaration,
+  FunctionExpression,
   EnumDeclaration,
   TypeAliasDeclaration,
   MethodDeclaration,
@@ -26,6 +27,8 @@ import {
   ParameterDeclaration,
   GetAccessorDeclaration,
   SetAccessorDeclaration,
+  VariableDeclaration,
+  ArrowFunction,
   JSDoc,
   JSDocTag,
   Type,
@@ -36,11 +39,6 @@ import {
 
 import {
   ParserPlugin,
-  ParserInput,
-  ParserOutput,
-  ParseError,
-  ParseStats,
-  PluginManifest,
   PluginConfig,
   PluginValidationResult,
   ModuleNode,
@@ -53,19 +51,19 @@ import {
   DocTag,
   DecoratorNode,
   CodeExample,
-  GenericParam,
+  TypeParamNode,
   DependencyRef,
+  DocIR,
+  createEmptyDocIR,
   createEmptyCoverage,
 } from "@docgen/core";
 
 export class TypeScriptParser implements ParserPlugin {
-  readonly manifest: PluginManifest & { type: "parser" } = {
-    name: "@docgen/parser-typescript",
-    version: "1.0.0",
-    type: "parser",
-    description: "Parses TypeScript/TSX files using ts-morph",
-    supports: ["typescript", "tsx", "ts"],
-  };
+  readonly name = "@docgen/parser-typescript";
+  readonly version = "1.0.0";
+  readonly type = "parser" as const;
+  readonly language = "typescript" as const;
+  readonly supports = ["typescript", "tsx", "ts"];
 
   private project: Project | null = null;
 
@@ -81,27 +79,12 @@ export class TypeScriptParser implements ParserPlugin {
     this.project = null;
   }
 
-  async parse(input: ParserInput): Promise<ParserOutput> {
+  async parse(files: string[], langConfig: any): Promise<DocIR> {
     const startTime = Date.now();
-    const errors: ParseError[] = [];
     const modules: ModuleNode[] = [];
 
-    // Discover files
-    const patterns = input.include.map((p) =>
-      path.join(input.sourceRoot, p)
-    );
-    const ignorePatterns = input.exclude.map((p) =>
-      path.join(input.sourceRoot, p)
-    );
-
-    const files = await fg(patterns, {
-      ignore: ignorePatterns,
-      absolute: true,
-      onlyFiles: true,
-    });
-
     // Create ts-morph project
-    const tsConfigPath = this.findTsConfig(input.sourceRoot);
+    const tsConfigPath = this.findTsConfig(process.cwd()); // Will use correct workDir conceptually
     this.project = new Project({
       tsConfigFilePath: tsConfigPath || undefined,
       skipAddingFilesFromTsConfig: true,
@@ -119,28 +102,22 @@ export class TypeScriptParser implements ParserPlugin {
     const sourceFiles = this.project.getSourceFiles();
     for (const sourceFile of sourceFiles) {
       try {
-        const fileModules = this.parseSourceFile(sourceFile, input.sourceRoot);
+        // Here we assume the source root can be passed statically, 
+        // normally we would resolve the best common prefix
+        const fileModules = this.parseSourceFile(sourceFile, process.cwd());
         modules.push(...fileModules);
       } catch (err: any) {
-        errors.push({
-          filePath: path.relative(input.sourceRoot, sourceFile.getFilePath()),
-          line: 0,
-          column: 0,
-          message: `Failed to parse: ${err.message}`,
-          severity: "error",
-        });
+        console.error(`Failed to parse ${sourceFile.getFilePath()}: ${err.message}`);
       }
     }
 
-    const stats: ParseStats = {
-      filesScanned: files.length,
-      filesParsed: sourceFiles.length,
-      modulesFound: modules.length,
-      membersFound: modules.reduce((sum, m) => sum + m.members.length, 0),
-      parseTimeMs: Date.now() - startTime,
-    };
-
-    return { modules, errors, stats };
+    const docir = createEmptyDocIR({
+        name: "unnamed",
+        version: "0.0.0",
+        languages: ["typescript"]
+    });
+    docir.modules = modules;
+    return docir;
   }
 
   // ── File-Level Parsing ──────────────────────────────────────
@@ -176,6 +153,19 @@ export class TypeScriptParser implements ParserPlugin {
     for (const func of sourceFile.getFunctions()) {
       if (func.isExported()) {
         modules.push(this.parseFunction(func, filePath));
+      }
+    }
+
+    for (const declarations of sourceFile.getExportedDeclarations().values()) {
+      for (const declaration of declarations) {
+        if (!Node.isVariableDeclaration(declaration)) {
+          continue;
+        }
+
+        const module = this.parseExportedVariable(declaration, filePath);
+        if (module) {
+          modules.push(module);
+        }
       }
     }
 
@@ -218,7 +208,7 @@ export class TypeScriptParser implements ParserPlugin {
       name,
       filePath,
       language: "typescript",
-      kind: cls.isAbstract() ? "abstract-class" : "class",
+      kind: "class",
       description: this.extractDescription(cls),
       tags: this.extractTags(cls),
       members,
@@ -226,10 +216,10 @@ export class TypeScriptParser implements ParserPlugin {
       examples: this.extractExamples(cls),
       coverage: createEmptyCoverage(),
       decorators: this.extractDecorators(cls),
-      generics: this.extractGenerics(cls),
+      typeParameters: this.extractGenerics(cls),
       extends: cls.getExtends()?.getText(),
       implements: cls.getImplements().map((i) => i.getText()),
-      exported: cls.isExported(),
+      exports: { isDefault: cls.isDefaultExport(), isNamed: cls.isExported() },
     };
   }
 
@@ -260,7 +250,6 @@ export class TypeScriptParser implements ParserPlugin {
         examples: [],
         tags: this.extractTags(method),
         decorators: [],
-        lineNumber: method.getStartLineNumber(),
       });
     }
 
@@ -284,7 +273,6 @@ export class TypeScriptParser implements ParserPlugin {
         examples: [],
         tags: this.extractTags(prop),
         decorators: [],
-        lineNumber: prop.getStartLineNumber(),
       });
     }
 
@@ -301,12 +289,12 @@ export class TypeScriptParser implements ParserPlugin {
       examples: this.extractExamples(iface),
       coverage: createEmptyCoverage(),
       decorators: [],
-      generics: this.extractGenerics(iface),
+      typeParameters: this.extractGenerics(iface),
       extends: iface.getExtends().length > 0
         ? iface.getExtends().map(e => e.getText()).join(", ")
         : undefined,
       implements: [],
-      exported: iface.isExported(),
+      exports: { isDefault: iface.isDefaultExport(), isNamed: iface.isExported() },
     };
   }
 
@@ -333,7 +321,6 @@ export class TypeScriptParser implements ParserPlugin {
       examples: [],
       tags: [],
       decorators: [],
-      lineNumber: m.getStartLineNumber(),
     }));
 
     return {
@@ -349,8 +336,8 @@ export class TypeScriptParser implements ParserPlugin {
       examples: [],
       coverage: createEmptyCoverage(),
       decorators: [],
-      generics: [],
-      exported: enumDecl.isExported(),
+      typeParameters: [],
+      exports: { isDefault: enumDecl.isDefaultExport(), isNamed: enumDecl.isExported() },
     };
   }
 
@@ -373,8 +360,8 @@ export class TypeScriptParser implements ParserPlugin {
       examples: this.extractExamples(typeAlias),
       coverage: createEmptyCoverage(),
       decorators: [],
-      generics: this.extractGenerics(typeAlias),
-      exported: typeAlias.isExported(),
+      typeParameters: this.extractGenerics(typeAlias),
+      exports: { isDefault: typeAlias.isDefaultExport(), isNamed: typeAlias.isExported() },
     };
   }
 
@@ -410,15 +397,70 @@ export class TypeScriptParser implements ParserPlugin {
           examples: this.extractExamples(func),
           tags: this.extractTags(func),
           decorators: [],
-          lineNumber: func.getStartLineNumber(),
         },
       ],
       dependencies: [],
       examples: this.extractExamples(func),
       coverage: createEmptyCoverage(),
       decorators: [],
-      generics: this.extractGenerics(func),
-      exported: func.isExported(),
+      typeParameters: this.extractGenerics(func),
+      exports: { isDefault: func.isDefaultExport(), isNamed: func.isExported() },
+    };
+  }
+
+  private parseExportedVariable(
+    declaration: VariableDeclaration,
+    filePath: string
+  ): ModuleNode | null {
+    const initializer = declaration.getInitializer();
+    if (
+      !initializer ||
+      (!Node.isArrowFunction(initializer) && !Node.isFunctionExpression(initializer))
+    ) {
+      return null;
+    }
+
+    const docNode = declaration.getVariableStatement() ?? declaration;
+    const name = declaration.getName();
+
+    return {
+      id: this.buildId(filePath, name),
+      name,
+      filePath,
+      language: "typescript",
+      kind: "function",
+      description: this.extractDescription(docNode),
+      tags: this.extractTags(docNode),
+      members: [
+        {
+          name,
+          kind: "method",
+          visibility: "public",
+          isStatic: false,
+          isAsync: initializer.isAsync(),
+          isAbstract: false,
+          signature: this.buildVariableFunctionSignature(declaration, initializer),
+          description: this.extractDescription(docNode),
+          parameters: this.extractParameters(initializer.getParameters()),
+          returnType: this.buildTypeRef(initializer.getReturnType()),
+          throws: this.extractThrows(docNode),
+          deprecated: this.extractDeprecation(docNode),
+          since: this.extractTagValue(docNode, "since"),
+          examples: this.extractExamples(docNode),
+          tags: this.extractTags(docNode),
+          decorators: [],
+        },
+      ],
+      dependencies: [],
+      examples: this.extractExamples(docNode),
+      coverage: createEmptyCoverage(),
+      decorators: [],
+      typeParameters: this.extractGenerics(initializer),
+      exports: {
+        isDefault: declaration.getVariableStatement()?.isDefaultExport() ?? false,
+        isNamed: true,
+        exportedName: name,
+      },
     };
   }
 
@@ -443,7 +485,6 @@ export class TypeScriptParser implements ParserPlugin {
       tags: this.extractTags(method),
       decorators: this.extractDecorators(method),
       overrides: method.hasOverrideKeyword() ? "parent" : undefined,
-      lineNumber: method.getStartLineNumber(),
     };
   }
 
@@ -465,7 +506,6 @@ export class TypeScriptParser implements ParserPlugin {
       examples: [],
       tags: this.extractTags(prop),
       decorators: this.extractDecorators(prop),
-      lineNumber: prop.getStartLineNumber(),
     };
   }
 
@@ -489,7 +529,6 @@ export class TypeScriptParser implements ParserPlugin {
       examples: [],
       tags: this.extractTags(ctor),
       decorators: [],
-      lineNumber: ctor.getStartLineNumber(),
     };
   }
 
@@ -521,7 +560,6 @@ export class TypeScriptParser implements ParserPlugin {
       examples: [],
       tags: this.extractTags(accessor),
       decorators: this.extractDecorators(accessor),
-      lineNumber: accessor.getStartLineNumber(),
     };
   }
 
@@ -551,10 +589,10 @@ export class TypeScriptParser implements ParserPlugin {
     for (const doc of docs) {
       for (const tag of doc.getTags()) {
         tags.push({
-          name: tag.getTagName(),
-          value: tag.getCommentText()?.trim() || "",
+          tag: tag.getTagName(),
+          description: tag.getCommentText()?.trim() || "",
           raw: tag.getText(),
-        });
+        } as any);
       }
     }
 
@@ -563,16 +601,16 @@ export class TypeScriptParser implements ParserPlugin {
 
   private extractTagValue(node: Node, tagName: string): string | undefined {
     const tags = this.extractTags(node);
-    const tag = tags.find((t) => t.name === tagName);
-    return tag?.value;
+    const tag = tags.find((t) => t.tag === tagName);
+    return tag?.description;
   }
 
   private extractThrows(node: Node): ThrowsNode[] {
     const tags = this.extractTags(node);
     return tags
-      .filter((t) => t.name === "throws" || t.name === "exception")
+      .filter((t) => t.tag === "throws" || t.tag === "exception")
       .map((t) => {
-        const parts = t.value.split(/\s+/);
+        const parts = t.description.split(/\s+/);
         return {
           type: parts[0] || "Error",
           description: parts.slice(1).join(" "),
@@ -582,10 +620,10 @@ export class TypeScriptParser implements ParserPlugin {
 
   private extractDeprecation(node: Node) {
     const tags = this.extractTags(node);
-    const tag = tags.find((t) => t.name === "deprecated");
+    const tag = tags.find((t) => t.tag === "deprecated");
     if (!tag) return null;
     return {
-      message: tag.value || "Deprecated",
+      message: tag.description || "Deprecated",
       since: this.extractTagValue(node, "since"),
       replacement: undefined,
     };
@@ -594,11 +632,11 @@ export class TypeScriptParser implements ParserPlugin {
   private extractExamples(node: Node): CodeExample[] {
     const tags = this.extractTags(node);
     return tags
-      .filter((t) => t.name === "example")
+      .filter((t) => t.tag === "example")
       .map((t, i) => ({
         title: `Example ${i + 1}`,
         language: "typescript",
-        code: t.value,
+        code: t.description,
         description: undefined,
       }));
   }
@@ -608,16 +646,17 @@ export class TypeScriptParser implements ParserPlugin {
   private buildTypeRef(type: Type): TypeRef {
     const text = type.getText();
     const isArray = type.isArray();
-    const isNullable =
-      type.isNullable() || type.isUndefined();
+    const isNullable = type.isNullable() || type.isUndefined();
+    const isUnion = type.isUnion();
 
     return {
       name: this.simplifyTypeName(text),
       raw: text,
       isArray,
-      isOptional: false,
       isNullable,
-      generics: type.getTypeArguments().map((t) => this.buildTypeRef(t)),
+      isUnion,
+      typeArguments: type.getTypeArguments().map((t) => this.buildTypeRef(t)),
+      unionMembers: isUnion ? type.getUnionTypes().map((t) => this.buildTypeRef(t)) : undefined,
     };
   }
 
@@ -644,12 +683,12 @@ export class TypeScriptParser implements ParserPlugin {
 
     const tags = this.extractTags(parent);
     const paramTag = tags.find(
-      (t) => t.name === "param" && t.value.startsWith(param.getName())
+      (t) => t.tag === "param" && t.description.startsWith(param.getName())
     );
 
     if (paramTag) {
       // Strip the param name from the value
-      return paramTag.value.replace(new RegExp(`^${param.getName()}\\s*-?\\s*`), "");
+      return paramTag.description.replace(new RegExp(`^${param.getName()}\\s*-?\\s*`), "");
     }
 
     return "";
@@ -657,7 +696,7 @@ export class TypeScriptParser implements ParserPlugin {
 
   // ── Generics ────────────────────────────────────────────────
 
-  private extractGenerics(node: Node): GenericParam[] {
+  private extractGenerics(node: Node): TypeParamNode[] {
     if (
       !("getTypeParameters" in node) ||
       typeof (node as any).getTypeParameters !== "function"
@@ -669,10 +708,10 @@ export class TypeScriptParser implements ParserPlugin {
     return typeParams.map((tp: any) => ({
       name: tp.getName(),
       constraint: tp.getConstraint()
-        ? this.buildTypeRef(tp.getConstraint().getType())
+        ? this.simplifyTypeName(tp.getConstraint().getType().getText())
         : undefined,
       default: tp.getDefault()
-        ? this.buildTypeRef(tp.getDefault().getType())
+        ? this.simplifyTypeName(tp.getDefault().getType().getText())
         : undefined,
     }));
   }
@@ -780,6 +819,19 @@ export class TypeScriptParser implements ParserPlugin {
     const returnType = func.getReturnType().getText();
     const async = func.isAsync() ? "async " : "";
     return `${async}function ${func.getName() || "anonymous"}(${params}): ${this.simplifyTypeName(returnType)}`;
+  }
+
+  private buildVariableFunctionSignature(
+    declaration: VariableDeclaration,
+    initializer: ArrowFunction | FunctionExpression
+  ): string {
+    const params = initializer
+      .getParameters()
+      .map((p) => p.getText())
+      .join(", ");
+    const returnType = this.simplifyTypeName(initializer.getReturnType().getText());
+    const async = initializer.isAsync() ? "async " : "";
+    return `${async}const ${declaration.getName()} = (${params}): ${returnType}`;
   }
 
   private findTsConfig(sourceRoot: string): string | null {

@@ -293,14 +293,22 @@ export class Orchestrator {
 
   private async resolveFiles(langConfig: LanguageConfig): Promise<string[]> {
     const sourceDir = path.resolve(this.workDir, langConfig.source);
-    const include = langConfig.include.map((p) => path.join(sourceDir, p));
-    const ignore = langConfig.exclude.map((p) => path.join(sourceDir, p));
+    const include = langConfig.include.map((pattern) =>
+      this.toGlobPattern(path.join(sourceDir, pattern))
+    );
+    const ignore = langConfig.exclude.map((pattern) =>
+      this.toGlobPattern(path.join(sourceDir, pattern))
+    );
 
     return fg.sync(include, {
       ignore,
       absolute: true,
       onlyFiles: true,
     });
+  }
+
+  private toGlobPattern(pattern: string): string {
+    return pattern.replace(/\\/g, "/");
   }
 
   private checkValidationRules(docir: DocIR) {

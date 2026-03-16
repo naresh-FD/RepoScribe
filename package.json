@@ -3,6 +3,10 @@
   "version": "1.0.0",
   "private": true,
   "description": "Universal multi-language documentation generator",
+  "bin": {
+    "reposcribe-docs": "scripts/generate-docs.mjs",
+    "reposcribe-cli": "scripts/run-docgen.cjs"
+  },
   "packageManager": "npm@10.9.3",
   "workspaces": [
     "packages/*"
@@ -11,7 +15,9 @@
     "build": "turbo run build",
     "test": "turbo run test",
     "lint": "turbo run lint",
-    "clean": "turbo run clean"
+    "clean": "turbo run clean",
+    "docs:generate": "node scripts/generate-docs.mjs",
+    "prepare": "npm run build"
   },
   "devDependencies": {
     "turbo": "^2.0.0",
