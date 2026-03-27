@@ -11,6 +11,7 @@ import type {
 } from "./plugin/types";
 import { loadPlugins, type PluginRegistry } from "./plugin/loader";
 import { CoverageAnalyzer } from "./transforms/coverage-analyzer";
+import { DeveloperDocumentationPlanner } from "./transforms/developer-doc-planner";
 import { LinkResolver } from "./transforms/link-resolver";
 
 // ─────────────────────────────────────────────────────────────────
@@ -184,6 +185,7 @@ export class Orchestrator {
 
     // Register built-in transformers
     const coverageAnalyzer = new CoverageAnalyzer();
+    const developerDocPlanner = new DeveloperDocumentationPlanner();
     const linkResolver = new LinkResolver();
 
     const pluginConfig: PluginConfig = {
@@ -194,9 +196,10 @@ export class Orchestrator {
     };
 
     await coverageAnalyzer.initialize(pluginConfig);
+    await developerDocPlanner.initialize(pluginConfig);
     await linkResolver.initialize(pluginConfig);
 
-    this.registry.transformers.push(coverageAnalyzer, linkResolver);
+    this.registry.transformers.push(coverageAnalyzer, linkResolver, developerDocPlanner);
     this.registry.transformers.sort((a, b) => a.priority - b.priority);
 
     return this.registry;

@@ -11,6 +11,7 @@ export interface DocIR {
   adrs: ADRNode[];
   changelog: ChangelogEntry[];
   readme: ReadmeNode | null;
+  documentationPlan: DocumentationPlan | null;
 }
 
 /** Project-level metadata extracted from config + git */
@@ -46,6 +47,7 @@ export interface ModuleNode {
   extends?: string;
   implements?: string[];
   exports?: ExportInfo;
+  sourceFacts: SourceFacts;
 }
 
 export type ModuleKind =
@@ -165,6 +167,32 @@ export interface ExportInfo {
   exportedName?: string;
 }
 
+export type SourceFileRole =
+  | "route"
+  | "feature"
+  | "component"
+  | "ui-component"
+  | "hook"
+  | "service"
+  | "state"
+  | "context"
+  | "util"
+  | "types"
+  | "test-support"
+  | "unknown";
+
+export interface SourceFacts {
+  fileRole: SourceFileRole;
+  featureKey?: string;
+  routeKey?: string;
+  isTypeOnly: boolean;
+  isReExportOnly: boolean;
+  isTrivial: boolean;
+  usesReactHooks: boolean;
+  usesContext: boolean;
+  usesServiceDependencies: boolean;
+}
+
 // ─── Coverage ───────────────────────────────────────────────────
 
 export interface CoverageScore {
@@ -248,6 +276,74 @@ export interface ReadmeSection {
   order: number;
 }
 
+export interface DocumentationPlan {
+  mode: "developer" | "exhaustive";
+  project: DocumentationProjectContext;
+  pages: DocumentationPages;
+}
+
+export interface DocumentationProjectContext {
+  name: string;
+  summary: string;
+  sourceRoots: string[];
+  techStack: string[];
+  setupSteps: string[];
+  importantScripts: DocumentationScript[];
+  envFiles: string[];
+  envVars: string[];
+  nodeVersion?: string;
+}
+
+export interface DocumentationPages {
+  readme: DocumentationPage;
+  architecture: DocumentationPage;
+  projectStructure: DocumentationPage;
+  setup: DocumentationPage;
+  features: FeatureDocumentationPage[];
+  api: DocumentationPage;
+  components: DocumentationPage;
+  state: DocumentationPage;
+  testing: DocumentationPage;
+  troubleshooting: DocumentationPage;
+}
+
+export interface DocumentationPage {
+  filePath: string;
+  title: string;
+  summary: string;
+  moduleIds: string[];
+  sourcePaths: string[];
+  sections: DocumentationSection[];
+}
+
+export interface FeatureDocumentationPage extends DocumentationPage {
+  featureKey: string;
+}
+
+export interface DocumentationSection {
+  heading: string;
+  paragraphs: string[];
+  bullets: string[];
+  codeBlocks: DocumentationCodeBlock[];
+  table?: DocumentationTable;
+}
+
+export interface DocumentationCodeBlock {
+  language: string;
+  code: string;
+}
+
+export interface DocumentationTable {
+  headers: string[];
+  rows: string[][];
+}
+
+export interface DocumentationScript {
+  name: string;
+  command: string;
+  description: string;
+}
+
 // ─── Factory ────────────────────────────────────────────────────
 
 /** Create an empty DocIR with sensible defaults */
@@ -268,6 +364,7 @@ export function createEmptyDocIR(
     adrs: [],
     changelog: [],
     readme: null,
+    documentationPlan: null,
   };
 }
 
@@ -284,5 +381,20 @@ export function createEmptyCoverage(): CoverageScore {
       members: 0,
     },
     undocumented: [],
+  };
+}
+
+export function createDefaultSourceFacts(
+  overrides: Partial<SourceFacts> = {}
+): SourceFacts {
+  return {
+    fileRole: "unknown",
+    isTypeOnly: false,
+    isReExportOnly: false,
+    isTrivial: false,
+    usesReactHooks: false,
+    usesContext: false,
+    usesServiceDependencies: false,
+    ...overrides,
   };
 }

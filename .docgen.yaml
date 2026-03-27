@@ -30,7 +30,7 @@ languages:
 output:
   markdown:
     enabled: true
-    outputDir: docs/components
+    outputDir: docs/generated
     includeSourceLinks: true
     collapsibleSections: true
 
@@ -39,7 +39,10 @@ output:
     engine: puppeteer
     outputDir: docs/pdf
     options:
-      fileName: docgen-components.pdf
+      fileName: reposcribe-developer-guide.pdf
+
+documentation:
+  mode: developer
 
 validation:
   coverage:

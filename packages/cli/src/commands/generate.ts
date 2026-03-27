@@ -10,6 +10,7 @@ import {
 interface GenerateOptions {
   format?: string[];
   output?: string;
+  mode?: string;
   json?: boolean;
   verbose?: boolean;
   watch?: boolean;
@@ -21,6 +22,13 @@ export async function generateCommand(options: GenerateOptions): Promise<void> {
 
   try {
     const config = loadConfig(workDir);
+
+    if (options.mode) {
+      if (!["developer", "exhaustive"].includes(options.mode)) {
+        throw new Error(`Unsupported documentation mode "${options.mode}". Use "developer" or "exhaustive".`);
+      }
+      config.documentation.mode = options.mode as "developer" | "exhaustive";
+    }
 
     // Override output directory if specified
     if (options.output) {

@@ -17,6 +17,7 @@
     "lint": "turbo run lint",
     "clean": "turbo run clean",
     "docs:generate": "node scripts/generate-docs.mjs",
+    "docs:example": "npm run --prefix example/testgen docs:generate",
     "prepare": "npm run build"
   },
   "devDependencies": {

@@ -1,6 +1,6 @@
 # RepoScribe
 
-**Generate code documentation as separate Markdown files and one combined PDF for React and Java Spring Boot projects.**
+**Generate layered developer documentation for React and TypeScript projects, with exhaustive reference output available when you need it.**
 
 RepoScribe is now focused on two project types:
 
@@ -14,14 +14,25 @@ Current implementation status:
 
 ## What It Generates
 
-- one Markdown file per exported module or component
-- generated index pages for the documentation set
-- one combined PDF for the full codebase
+Default `developer` mode produces a tight documentation set instead of one file per export:
 
-Default output:
+- `docs/README.md`
+- `docs/architecture.md`
+- `docs/project-structure.md`
+- `docs/setup.md`
+- `docs/features/*.md`
+- `docs/api/services.md`
+- `docs/components/reusable-components.md`
+- `docs/state/state-management.md`
+- `docs/testing/testing-guide.md`
+- `docs/troubleshooting.md`
+- one combined PDF guide under `docs/pdf`
 
-- `docs/components`
-- `docs/pdf/docgen-components.pdf`
+When you need symbol-by-symbol output, run exhaustive mode:
+
+```bash
+reposcribe-cli generate --mode exhaustive --format markdown pdf
+```
 
 ## Quick Start In This Repo
 
@@ -30,7 +41,7 @@ npm install
 npm run docs:generate
 ```
 
-RepoScribe reads [`.docgen.yaml`](F:/RepoScribe/.docgen.yaml) and writes generated docs into this repo's `docs` folder.
+RepoScribe reads [`.docgen.yaml`](F:/RepoScribe/.docgen.yaml). This repository keeps its generated output under `docs/generated` so it does not collide with the hand-written product docs already stored under `docs/`.
 
 ## Use In Another Repo
 
@@ -67,12 +78,10 @@ Guides:
 
 Supported today through `@docgen/parser-typescript`:
 
-- exported React function-style components
-- exported functions
-- classes and interfaces
-- enums and type aliases
-- separate Markdown docs
-- combined PDF output
+- developer-first layered docs for React and TypeScript repos
+- feature grouping and selective component/service/state docs
+- exhaustive per-module Markdown output behind `--mode exhaustive`
+- combined PDF output that mirrors developer mode
 
 ## Java Spring Boot Support
 

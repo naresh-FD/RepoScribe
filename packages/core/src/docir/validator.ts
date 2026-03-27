@@ -63,6 +63,31 @@ const CoverageScoreSchema = z.object({
   undocumented: z.array(z.string()),
 });
 
+const SourceFactsSchema = z.object({
+  fileRole: z.enum([
+    "route",
+    "feature",
+    "component",
+    "ui-component",
+    "hook",
+    "service",
+    "state",
+    "context",
+    "util",
+    "types",
+    "test-support",
+    "unknown",
+  ]),
+  featureKey: z.string().optional(),
+  routeKey: z.string().optional(),
+  isTypeOnly: z.boolean(),
+  isReExportOnly: z.boolean(),
+  isTrivial: z.boolean(),
+  usesReactHooks: z.boolean(),
+  usesContext: z.boolean(),
+  usesServiceDependencies: z.boolean(),
+});
+
 const MemberNodeSchema = z.object({
   name: z.string().min(1),
   kind: z.enum([
@@ -141,6 +166,7 @@ const ModuleNodeSchema = z.object({
       exportedName: z.string().optional(),
     })
     .optional(),
+  sourceFacts: SourceFactsSchema,
 });
 
 const ADRNodeSchema = z.object({
@@ -196,6 +222,70 @@ const ReadmeNodeSchema = z.object({
   ),
 });
 
+const DocumentationCodeBlockSchema = z.object({
+  language: z.string(),
+  code: z.string(),
+});
+
+const DocumentationTableSchema = z.object({
+  headers: z.array(z.string()),
+  rows: z.array(z.array(z.string())),
+});
+
+const DocumentationSectionSchema = z.object({
+  heading: z.string(),
+  paragraphs: z.array(z.string()),
+  bullets: z.array(z.string()),
+  codeBlocks: z.array(DocumentationCodeBlockSchema),
+  table: DocumentationTableSchema.optional(),
+});
+
+const DocumentationPageSchema = z.object({
+  filePath: z.string(),
+  title: z.string(),
+  summary: z.string(),
+  moduleIds: z.array(z.string()),
+  sourcePaths: z.array(z.string()),
+  sections: z.array(DocumentationSectionSchema),
+});
+
+const FeatureDocumentationPageSchema = DocumentationPageSchema.extend({
+  featureKey: z.string(),
+});
+
+const DocumentationPlanSchema = z.object({
+  mode: z.enum(["developer", "exhaustive"]),
+  project: z.object({
+    name: z.string(),
+    summary: z.string(),
+    sourceRoots: z.array(z.string()),
+    techStack: z.array(z.string()),
+    setupSteps: z.array(z.string()),
+    importantScripts: z.array(
+      z.object({
+        name: z.string(),
+        command: z.string(),
+        description: z.string(),
+      })
+    ),
+    envFiles: z.array(z.string()),
+    envVars: z.array(z.string()),
+    nodeVersion: z.string().optional(),
+  }),
+  pages: z.object({
+    readme: DocumentationPageSchema,
+    architecture: DocumentationPageSchema,
+    projectStructure: DocumentationPageSchema,
+    setup: DocumentationPageSchema,
+    features: z.array(FeatureDocumentationPageSchema),
+    api: DocumentationPageSchema,
+    components: DocumentationPageSchema,
+    state: DocumentationPageSchema,
+    testing: DocumentationPageSchema,
+    troubleshooting: DocumentationPageSchema,
+  }),
+});
+
 export const DocIRSchema = z.object({
   metadata: z.object({
     name: z.string().min(1),
@@ -210,6 +300,7 @@ export const DocIRSchema = z.object({
   adrs: z.array(ADRNodeSchema),
   changelog: z.array(ChangelogEntrySchema),
   readme: ReadmeNodeSchema.nullable(),
+  documentationPlan: DocumentationPlanSchema.nullable(),
 });
 
 // ─── Validation Functions ───────────────────────────────────────

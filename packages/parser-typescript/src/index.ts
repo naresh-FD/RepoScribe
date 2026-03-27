@@ -42,6 +42,7 @@ import {
   PluginConfig,
   PluginValidationResult,
   ModuleNode,
+  ModuleKind,
   MemberNode,
   MemberKind,
   Visibility,
@@ -56,6 +57,8 @@ import {
   DocIR,
   createEmptyDocIR,
   createEmptyCoverage,
+  createDefaultSourceFacts,
+  SourceFacts,
 } from "@docgen/core";
 
 export class TypeScriptParser implements ParserPlugin {
@@ -169,6 +172,10 @@ export class TypeScriptParser implements ParserPlugin {
       }
     }
 
+    if (modules.length === 0 && this.isReExportOnlyFile(sourceFile)) {
+      modules.push(this.parseReExportModule(sourceFile, filePath));
+    }
+
     return modules;
   }
 
@@ -177,6 +184,7 @@ export class TypeScriptParser implements ParserPlugin {
   private parseClass(cls: ClassDeclaration, filePath: string): ModuleNode {
     const name = cls.getName() || "AnonymousClass";
     const members: MemberNode[] = [];
+    const dependencies = this.extractDependencies(cls);
 
     // Constructors
     for (const ctor of cls.getConstructors()) {
@@ -212,7 +220,7 @@ export class TypeScriptParser implements ParserPlugin {
       description: this.extractDescription(cls),
       tags: this.extractTags(cls),
       members,
-      dependencies: this.extractDependencies(cls),
+      dependencies,
       examples: this.extractExamples(cls),
       coverage: createEmptyCoverage(),
       decorators: this.extractDecorators(cls),
@@ -220,6 +228,13 @@ export class TypeScriptParser implements ParserPlugin {
       extends: cls.getExtends()?.getText(),
       implements: cls.getImplements().map((i) => i.getText()),
       exports: { isDefault: cls.isDefaultExport(), isNamed: cls.isExported() },
+      sourceFacts: this.buildSourceFacts(cls.getSourceFile(), filePath, {
+        kind: "class",
+        name,
+        isTypeOnly: false,
+        members,
+        dependencies,
+      }),
     };
   }
 
@@ -295,6 +310,12 @@ export class TypeScriptParser implements ParserPlugin {
         : undefined,
       implements: [],
       exports: { isDefault: iface.isDefaultExport(), isNamed: iface.isExported() },
+      sourceFacts: this.buildSourceFacts(iface.getSourceFile(), filePath, {
+        kind: "interface",
+        name,
+        isTypeOnly: true,
+        members,
+      }),
     };
   }
 
@@ -338,6 +359,12 @@ export class TypeScriptParser implements ParserPlugin {
       decorators: [],
       typeParameters: [],
       exports: { isDefault: enumDecl.isDefaultExport(), isNamed: enumDecl.isExported() },
+      sourceFacts: this.buildSourceFacts(enumDecl.getSourceFile(), filePath, {
+        kind: "enum",
+        name,
+        isTypeOnly: false,
+        members,
+      }),
     };
   }
 
@@ -347,9 +374,10 @@ export class TypeScriptParser implements ParserPlugin {
     typeAlias: TypeAliasDeclaration,
     filePath: string
   ): ModuleNode {
+    const name = typeAlias.getName();
     return {
-      id: this.buildId(filePath, typeAlias.getName()),
-      name: typeAlias.getName(),
+      id: this.buildId(filePath, name),
+      name,
       filePath,
       language: "typescript",
       kind: "type-alias",
@@ -362,6 +390,12 @@ export class TypeScriptParser implements ParserPlugin {
       decorators: [],
       typeParameters: this.extractGenerics(typeAlias),
       exports: { isDefault: typeAlias.isDefaultExport(), isNamed: typeAlias.isExported() },
+      sourceFacts: this.buildSourceFacts(typeAlias.getSourceFile(), filePath, {
+        kind: "type-alias",
+        name,
+        isTypeOnly: true,
+        members: [],
+      }),
     };
   }
 
@@ -372,6 +406,25 @@ export class TypeScriptParser implements ParserPlugin {
     filePath: string
   ): ModuleNode {
     const name = func.getName() || "anonymous";
+    const members: MemberNode[] = [
+      {
+        name,
+        kind: "method",
+        visibility: "public",
+        isStatic: false,
+        isAsync: func.isAsync(),
+        isAbstract: false,
+        signature: this.buildFunctionSignature(func),
+        description: this.extractDescription(func),
+        parameters: this.extractParameters(func.getParameters()),
+        returnType: this.buildTypeRef(func.getReturnType()),
+        throws: this.extractThrows(func),
+        deprecated: null,
+        examples: this.extractExamples(func),
+        tags: this.extractTags(func),
+        decorators: [],
+      },
+    ];
     return {
       id: this.buildId(filePath, name),
       name,
@@ -380,31 +433,19 @@ export class TypeScriptParser implements ParserPlugin {
       kind: "function",
       description: this.extractDescription(func),
       tags: this.extractTags(func),
-      members: [
-        {
-          name,
-          kind: "method",
-          visibility: "public",
-          isStatic: false,
-          isAsync: func.isAsync(),
-          isAbstract: false,
-          signature: this.buildFunctionSignature(func),
-          description: this.extractDescription(func),
-          parameters: this.extractParameters(func.getParameters()),
-          returnType: this.buildTypeRef(func.getReturnType()),
-          throws: this.extractThrows(func),
-          deprecated: null,
-          examples: this.extractExamples(func),
-          tags: this.extractTags(func),
-          decorators: [],
-        },
-      ],
+      members,
       dependencies: [],
       examples: this.extractExamples(func),
       coverage: createEmptyCoverage(),
       decorators: [],
       typeParameters: this.extractGenerics(func),
       exports: { isDefault: func.isDefaultExport(), isNamed: func.isExported() },
+      sourceFacts: this.buildSourceFacts(func.getSourceFile(), filePath, {
+        kind: "function",
+        name,
+        isTypeOnly: false,
+        members,
+      }),
     };
   }
 
@@ -422,6 +463,26 @@ export class TypeScriptParser implements ParserPlugin {
 
     const docNode = declaration.getVariableStatement() ?? declaration;
     const name = declaration.getName();
+    const members: MemberNode[] = [
+      {
+        name,
+        kind: "method",
+        visibility: "public",
+        isStatic: false,
+        isAsync: initializer.isAsync(),
+        isAbstract: false,
+        signature: this.buildVariableFunctionSignature(declaration, initializer),
+        description: this.extractDescription(docNode),
+        parameters: this.extractParameters(initializer.getParameters()),
+        returnType: this.buildTypeRef(initializer.getReturnType()),
+        throws: this.extractThrows(docNode),
+        deprecated: this.extractDeprecation(docNode),
+        since: this.extractTagValue(docNode, "since"),
+        examples: this.extractExamples(docNode),
+        tags: this.extractTags(docNode),
+        decorators: [],
+      },
+    ];
 
     return {
       id: this.buildId(filePath, name),
@@ -431,26 +492,7 @@ export class TypeScriptParser implements ParserPlugin {
       kind: "function",
       description: this.extractDescription(docNode),
       tags: this.extractTags(docNode),
-      members: [
-        {
-          name,
-          kind: "method",
-          visibility: "public",
-          isStatic: false,
-          isAsync: initializer.isAsync(),
-          isAbstract: false,
-          signature: this.buildVariableFunctionSignature(declaration, initializer),
-          description: this.extractDescription(docNode),
-          parameters: this.extractParameters(initializer.getParameters()),
-          returnType: this.buildTypeRef(initializer.getReturnType()),
-          throws: this.extractThrows(docNode),
-          deprecated: this.extractDeprecation(docNode),
-          since: this.extractTagValue(docNode, "since"),
-          examples: this.extractExamples(docNode),
-          tags: this.extractTags(docNode),
-          decorators: [],
-        },
-      ],
+      members,
       dependencies: [],
       examples: this.extractExamples(docNode),
       coverage: createEmptyCoverage(),
@@ -461,6 +503,12 @@ export class TypeScriptParser implements ParserPlugin {
         isNamed: true,
         exportedName: name,
       },
+      sourceFacts: this.buildSourceFacts(declaration.getSourceFile(), filePath, {
+        kind: "function",
+        name,
+        isTypeOnly: false,
+        members,
+      }),
     };
   }
 
@@ -783,6 +831,360 @@ export class TypeScriptParser implements ParserPlugin {
   }
 
   // ── Helpers ─────────────────────────────────────────────────
+
+  private parseReExportModule(sourceFile: SourceFile, filePath: string): ModuleNode {
+    const name = path.basename(filePath).replace(/\.(ts|tsx)$/, "") || "index";
+    const description =
+      sourceFile
+        .getExportDeclarations()
+        .map((declaration) => declaration.getModuleSpecifierValue())
+        .filter(Boolean)
+        .map((target) => `Re-exports from ${target}.`)
+        .join(" ") || "Barrel module that re-exports symbols.";
+
+    return {
+      id: this.buildId(filePath, name),
+      name,
+      filePath,
+      language: "typescript",
+      kind: "module",
+      description,
+      tags: [],
+      members: [],
+      dependencies: sourceFile.getExportDeclarations().map((declaration) => ({
+        name: declaration.getNamedExports().map((spec) => spec.getName()).join(", ") || "*",
+        source: declaration.getModuleSpecifierValue() ?? "re-export",
+        kind: "import",
+      })),
+      examples: [],
+      coverage: createEmptyCoverage(),
+      decorators: [],
+      typeParameters: [],
+      exports: {
+        isDefault: false,
+        isNamed: true,
+        exportedName: name,
+      },
+      sourceFacts: this.buildSourceFacts(sourceFile, filePath, {
+        kind: "module",
+        name,
+        isTypeOnly: false,
+        isReExportOnly: true,
+        members: [],
+      }),
+    };
+  }
+
+  private buildSourceFacts(
+    sourceFile: SourceFile,
+    filePath: string,
+    options: {
+      kind: ModuleKind;
+      name: string;
+      isTypeOnly: boolean;
+      isReExportOnly?: boolean;
+      members: MemberNode[];
+      dependencies?: DependencyRef[];
+    }
+  ): SourceFacts {
+    const usesReactHooks = this.fileUsesReactHooks(sourceFile, options.name);
+    const usesContext = this.fileUsesContext(sourceFile);
+    const usesServiceDependencies = this.fileUsesServiceDependencies(
+      sourceFile,
+      options.dependencies ?? []
+    );
+    const featureKey = this.detectFeatureKey(filePath);
+    const routeKey = this.detectRouteKey(filePath);
+    const isReExportOnly = options.isReExportOnly ?? this.isReExportOnlyFile(sourceFile);
+    const fileRole = this.detectFileRole(
+      sourceFile,
+      filePath,
+      options.kind,
+      options.name,
+      options.isTypeOnly,
+      usesReactHooks,
+      usesContext,
+      usesServiceDependencies,
+      isReExportOnly
+    );
+
+    return createDefaultSourceFacts({
+      fileRole,
+      featureKey,
+      routeKey,
+      isTypeOnly: options.isTypeOnly,
+      isReExportOnly,
+      isTrivial: this.isTrivialModule(
+        fileRole,
+        options.kind,
+        options.name,
+        options.members,
+        usesReactHooks,
+        usesContext,
+        usesServiceDependencies
+      ),
+      usesReactHooks,
+      usesContext,
+      usesServiceDependencies,
+    });
+  }
+
+  private detectFileRole(
+    sourceFile: SourceFile,
+    filePath: string,
+    kind: ModuleKind,
+    name: string,
+    isTypeOnly: boolean,
+    usesReactHooks: boolean,
+    usesContext: boolean,
+    usesServiceDependencies: boolean,
+    isReExportOnly: boolean
+  ): SourceFacts["fileRole"] {
+    const normalizedPath = filePath.replace(/\\/g, "/").toLowerCase();
+    const baseName = path.basename(normalizedPath);
+
+    if (
+      normalizedPath.includes("/__tests__/") ||
+      normalizedPath.includes("/fixtures/") ||
+      /\.test\./.test(normalizedPath) ||
+      /\.spec\./.test(normalizedPath)
+    ) {
+      return "test-support";
+    }
+
+    if (isReExportOnly) {
+      return "unknown";
+    }
+
+    if (isTypeOnly && (normalizedPath.includes("/types/") || baseName.includes("types"))) {
+      return "types";
+    }
+
+    if (this.detectRouteKey(filePath)) {
+      return "route";
+    }
+
+    if (normalizedPath.includes("/features/") || normalizedPath.includes("/modules/")) {
+      return "feature";
+    }
+
+    if (
+      normalizedPath.includes("/services/") ||
+      normalizedPath.includes("/api/") ||
+      /service|client|api/.test(name.toLowerCase())
+    ) {
+      return "service";
+    }
+
+    if (
+      normalizedPath.includes("/contexts/") ||
+      normalizedPath.includes("/context/") ||
+      usesContext ||
+      /context|provider/.test(name.toLowerCase())
+    ) {
+      return "context";
+    }
+
+    if (
+      normalizedPath.includes("/state/") ||
+      normalizedPath.includes("/store/") ||
+      normalizedPath.includes("/stores/")
+    ) {
+      return "state";
+    }
+
+    if (normalizedPath.includes("/hooks/") || /^use[A-Z]/.test(name)) {
+      return "hook";
+    }
+
+    if (this.isComponentLike(sourceFile, filePath, kind, name)) {
+      if (
+        normalizedPath.includes("/components/ui/") ||
+        normalizedPath.includes("/components/common/") ||
+        normalizedPath.includes("/shared/components/")
+      ) {
+        return "ui-component";
+      }
+      return "component";
+    }
+
+    if (isTypeOnly) {
+      return "types";
+    }
+
+    if (normalizedPath.includes("/utils/") || normalizedPath.includes("/lib/")) {
+      return "util";
+    }
+
+    if (usesServiceDependencies) {
+      return "service";
+    }
+
+    return "unknown";
+  }
+
+  private detectFeatureKey(filePath: string): string | undefined {
+    const normalized = filePath.replace(/\\/g, "/");
+    const featureMatch = normalized.match(/(?:^|\/)(?:features|modules)\/([^/]+)/i);
+    if (featureMatch?.[1]) {
+      return this.sanitizeKey(featureMatch[1]);
+    }
+
+    const segments = normalized.split("/").filter(Boolean);
+    for (let index = 0; index < segments.length - 1; index += 1) {
+      const segment = segments[index]!;
+      const lower = segment.toLowerCase();
+      if (
+        [
+          "src",
+          "app",
+          "pages",
+          "routes",
+          "components",
+          "services",
+          "hooks",
+          "contexts",
+          "context",
+          "state",
+          "store",
+          "stores",
+          "utils",
+          "lib",
+        ].includes(lower)
+      ) {
+        continue;
+      }
+      return this.sanitizeKey(segment);
+    }
+
+    return undefined;
+  }
+
+  private detectRouteKey(filePath: string): string | undefined {
+    const normalized = filePath.replace(/\\/g, "/");
+    const routeMatch = normalized.match(/(?:^|\/)(?:pages|routes|app)\/([^/.]+)/i);
+    if (routeMatch?.[1]) {
+      const raw = routeMatch[1]!.replace(/[\[\]()]/g, "");
+      return this.sanitizeKey(raw || "root");
+    }
+
+    const baseName = path.basename(normalized, path.extname(normalized)).toLowerCase();
+    if (["page", "layout", "route", "loading", "error", "not-found"].includes(baseName)) {
+      const parent = path.basename(path.dirname(normalized));
+      return this.sanitizeKey(parent || "root");
+    }
+
+    return undefined;
+  }
+
+  private fileUsesReactHooks(sourceFile: SourceFile, name: string): boolean {
+    if (/^use[A-Z]/.test(name)) {
+      return true;
+    }
+
+    const text = sourceFile.getFullText();
+    if (
+      /\buse(State|Effect|Memo|Callback|Reducer|Context|Ref|ImperativeHandle|Transition|DeferredValue)\b/.test(
+        text
+      )
+    ) {
+      return true;
+    }
+
+    return sourceFile
+      .getImportDeclarations()
+      .some((declaration) =>
+        declaration.getNamedImports().some((spec) => spec.getName().startsWith("use"))
+      );
+  }
+
+  private fileUsesContext(sourceFile: SourceFile): boolean {
+    const text = sourceFile.getFullText();
+    return /\b(createContext|useContext|Provider)\b/.test(text);
+  }
+
+  private fileUsesServiceDependencies(
+    sourceFile: SourceFile,
+    dependencies: DependencyRef[]
+  ): boolean {
+    if (dependencies.some((dependency) => /service|client|api/i.test(dependency.name))) {
+      return true;
+    }
+
+    return sourceFile
+      .getImportDeclarations()
+      .some((declaration) =>
+        /service|client|api/i.test(declaration.getModuleSpecifierValue() ?? "")
+      );
+  }
+
+  private isComponentLike(
+    sourceFile: SourceFile,
+    filePath: string,
+    kind: ModuleKind,
+    name: string
+  ): boolean {
+    if (kind !== "function" && kind !== "class") {
+      return false;
+    }
+
+    const normalizedPath = filePath.replace(/\\/g, "/").toLowerCase();
+    if (!filePath.endsWith(".tsx") && !normalizedPath.includes("/components/")) {
+      return false;
+    }
+
+    if (!/^[A-Z]/.test(name)) {
+      return false;
+    }
+
+    const text = sourceFile.getFullText();
+    return /<[\w.-]+/.test(text) || /React\.createElement/.test(text);
+  }
+
+  private isReExportOnlyFile(sourceFile: SourceFile): boolean {
+    const statements = sourceFile.getStatements();
+    const hasReExports = sourceFile.getExportDeclarations().length > 0;
+    if (!hasReExports) {
+      return false;
+    }
+
+    return statements.every((statement) =>
+      Node.isImportDeclaration(statement) || Node.isExportDeclaration(statement)
+    );
+  }
+
+  private isTrivialModule(
+    fileRole: SourceFacts["fileRole"],
+    kind: ModuleKind,
+    name: string,
+    members: MemberNode[],
+    usesReactHooks: boolean,
+    usesContext: boolean,
+    usesServiceDependencies: boolean
+  ): boolean {
+    const memberCount = members.length;
+    if (fileRole === "test-support") {
+      return true;
+    }
+
+    if (fileRole === "types") {
+      return memberCount <= 3;
+    }
+
+    if (fileRole === "ui-component") {
+      return !usesReactHooks && !usesContext && !usesServiceDependencies && memberCount <= 1;
+    }
+
+    if (kind === "function" && !usesReactHooks && !usesContext && !usesServiceDependencies) {
+      return memberCount <= 1 && !/^use[A-Z]/.test(name);
+    }
+
+    return false;
+  }
+
+  private sanitizeKey(value: string): string {
+    return value.replace(/[^a-z0-9-]+/gi, "-").replace(/^-+|-+$/g, "").toLowerCase() || "core";
+  }
 
   private getVisibility(node: any): Visibility {
     if (typeof node.getScope === "function") {

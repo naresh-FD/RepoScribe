@@ -1,18 +1,18 @@
-/**
+﻿/**
  * Markdown Renderer Plugin
  *
  * Generates GitHub-flavored Markdown documentation from DocIR.
  * Produces one .md file per module plus an index file.
  */
 
-import * as fs from "fs";
-import * as path from "path";
 import {
   RendererPlugin,
   OutputArtifact,
   PluginConfig,
   PluginValidationResult,
   DocIR,
+  DocumentationPage,
+  DocumentationPlan,
   ModuleNode,
   MemberNode,
   CoverageScore,
@@ -27,13 +27,17 @@ export class MarkdownRenderer implements RendererPlugin {
 
   private includeSourceLinks = true;
   private collapsibleSections = true;
+  private mode: "developer" | "exhaustive" = "developer";
 
   async initialize(config: PluginConfig): Promise<void> {
-    if (typeof config.options.includeSourceLinks === "boolean") {
-      this.includeSourceLinks = config.options.includeSourceLinks;
+    this.mode = config.projectConfig.documentation.mode;
+
+    const markdownConfig = config.projectConfig.output.markdown;
+    if (typeof markdownConfig.includeSourceLinks === "boolean") {
+      this.includeSourceLinks = markdownConfig.includeSourceLinks;
     }
-    if (typeof config.options.collapsibleSections === "boolean") {
-      this.collapsibleSections = config.options.collapsibleSections;
+    if (typeof markdownConfig.collapsibleSections === "boolean") {
+      this.collapsibleSections = markdownConfig.collapsibleSections;
     }
   }
 
@@ -44,95 +48,174 @@ export class MarkdownRenderer implements RendererPlugin {
   async cleanup(): Promise<void> {}
 
   async render(docir: DocIR, outputConfig: any): Promise<OutputArtifact[]> {
-    const startTime = Date.now();
-    const files: OutputArtifact[] = [];
-    
-    const outputDir = outputConfig.markdown?.outputDir || "docs/api";
+    if (this.mode === "developer") {
+      return this.renderDeveloper(docir);
+    }
 
-    // Ensure output directory exists
-    fs.mkdirSync(outputDir, { recursive: true });
+    return this.renderExhaustive(docir);
+  }
+
+  private renderExhaustive(docir: DocIR): OutputArtifact[] {
+    const files: OutputArtifact[] = [];
 
     // Generate index file
     const indexContent = this.renderIndex(docir);
-    const indexPath = path.join(outputDir, "README.md");
-    fs.writeFileSync(indexPath, indexContent, "utf-8");
-    files.push({
-      filePath: "README.md",
-      content: indexContent,
-      mimeType: "text/markdown",
-      size: Buffer.byteLength(indexContent),
-      metadata: { generatedAt: new Date().toISOString(), sourceModules: [], format: "markdown" }
-    });
+    files.push(this.createArtifact("README.md", indexContent, []));
 
     // Group modules by language
     const byLanguage = this.groupByLanguage(docir.modules);
 
     for (const [language, modules] of byLanguage) {
-      const langDir = path.join(outputDir, language);
-      fs.mkdirSync(langDir, { recursive: true });
-
       // Language index
       const langIndex = this.renderLanguageIndex(language, modules);
-      const langIndexPath = path.join(langDir, "README.md");
-      fs.writeFileSync(langIndexPath, langIndex, "utf-8");
-      files.push({
-        filePath: `${language}/README.md`,
-        content: langIndex,
-        mimeType: "text/markdown",
-        size: Buffer.byteLength(langIndex),
-        metadata: { generatedAt: new Date().toISOString(), sourceModules: [], format: "markdown" }
-      });
+      files.push(this.createArtifact(`${language}/README.md`, langIndex, []));
 
       // Individual module docs
       for (const mod of modules) {
         const moduleContent = this.renderModule(mod);
         const fileName = `${mod.name}.md`;
-        const modulePath = path.join(langDir, fileName);
-        fs.writeFileSync(modulePath, moduleContent, "utf-8");
-        files.push({
-          filePath: `${language}/${fileName}`,
-          content: moduleContent,
-          mimeType: "text/markdown",
-          size: Buffer.byteLength(moduleContent),
-          metadata: { generatedAt: new Date().toISOString(), sourceModules: [mod.id], format: "markdown" }
-        });
+        files.push(this.createArtifact(`${language}/${fileName}`, moduleContent, [mod.id]));
       }
     }
 
     // Generate ADR docs if present
     if (docir.adrs.length > 0) {
-      const adrDir = path.join(outputDir, "decisions");
-      fs.mkdirSync(adrDir, { recursive: true });
-
       const adrIndex = this.renderADRIndex(docir.adrs);
-      fs.writeFileSync(path.join(adrDir, "README.md"), adrIndex, "utf-8");
-      files.push({ filePath: "decisions/README.md", content: adrIndex, mimeType: "text/markdown", size: Buffer.byteLength(adrIndex), metadata: { generatedAt: new Date().toISOString(), sourceModules: [], format: "markdown" } });
+      files.push(this.createArtifact("decisions/README.md", adrIndex, []));
 
       for (const adr of docir.adrs) {
         const adrContent = this.renderADR(adr);
-        const adrPath = path.join(adrDir, `${adr.id}.md`);
-        fs.writeFileSync(adrPath, adrContent, "utf-8");
-        files.push({ filePath: `decisions/${adr.id}.md`, content: adrContent, mimeType: "text/markdown", size: Buffer.byteLength(adrContent), metadata: { generatedAt: new Date().toISOString(), sourceModules: [], format: "markdown" } });
+        files.push(this.createArtifact(`decisions/${adr.id}.md`, adrContent, []));
       }
     }
 
     // Generate changelog if present
     if (docir.changelog.length > 0) {
       const changelogContent = this.renderChangelog(docir.changelog);
-      fs.writeFileSync(path.join(outputDir, "CHANGELOG.md"), changelogContent, "utf-8");
-      files.push({ filePath: "CHANGELOG.md", content: changelogContent, mimeType: "text/markdown", size: Buffer.byteLength(changelogContent), metadata: { generatedAt: new Date().toISOString(), sourceModules: [], format: "markdown" } });
+      files.push(this.createArtifact("CHANGELOG.md", changelogContent, []));
     }
 
     return files;
   }
 
-  // ── Index Rendering ─────────────────────────────────────────
+  private renderDeveloper(docir: DocIR): OutputArtifact[] {
+    const plan = docir.documentationPlan;
+    if (!plan) {
+      throw new Error("Developer documentation mode requires a documentation plan.");
+    }
+
+    const pages = [
+      plan.pages.readme,
+      plan.pages.architecture,
+      plan.pages.projectStructure,
+      plan.pages.setup,
+      ...plan.pages.features,
+      plan.pages.api,
+      plan.pages.components,
+      plan.pages.state,
+      plan.pages.testing,
+      plan.pages.troubleshooting,
+    ];
+
+    return pages.map((page) =>
+      this.createArtifact(page.filePath, this.renderPlanPage(page, plan), page.moduleIds)
+    );
+  }
+
+  private renderPlanPage(page: DocumentationPage, plan: DocumentationPlan): string {
+    const lines: string[] = [`# ${page.title}`, "", page.summary, ""];
+
+    if (page.sourcePaths.length > 0) {
+      lines.push(
+        `**Relevant paths:** ${page.sourcePaths
+          .map((sourcePath) => `\`${this.normalizeDisplayPath(sourcePath)}\``)
+          .join(", ")}`
+      );
+      lines.push("");
+    }
+
+    for (const section of page.sections) {
+      lines.push(`## ${section.heading}`);
+      lines.push("");
+
+      for (const paragraph of section.paragraphs) {
+        lines.push(paragraph);
+        lines.push("");
+      }
+
+      if (section.table) {
+        lines.push(`| ${section.table.headers.join(" | ")} |`);
+        lines.push(`| ${section.table.headers.map(() => "---").join(" | ")} |`);
+        for (const row of section.table.rows) {
+          lines.push(`| ${row.join(" | ")} |`);
+        }
+        lines.push("");
+      }
+
+      for (const bullet of section.bullets) {
+        lines.push(`- ${bullet}`);
+      }
+      if (section.bullets.length > 0) {
+        lines.push("");
+      }
+
+      for (const block of section.codeBlocks) {
+        lines.push(`\`\`\`${block.language}`);
+        lines.push(block.code);
+        lines.push("```");
+        lines.push("");
+      }
+    }
+
+    if (page.filePath === "README.md") {
+      lines.push("## Documentation Map");
+      lines.push("");
+      lines.push(`- Architecture: \`${this.normalizeDisplayPath(plan.pages.architecture.filePath)}\``);
+      lines.push(`- Project structure: \`${this.normalizeDisplayPath(plan.pages.projectStructure.filePath)}\``);
+      lines.push(`- Setup: \`${this.normalizeDisplayPath(plan.pages.setup.filePath)}\``);
+      lines.push(`- Services: \`${this.normalizeDisplayPath(plan.pages.api.filePath)}\``);
+      lines.push(`- Components: \`${this.normalizeDisplayPath(plan.pages.components.filePath)}\``);
+      lines.push(`- State: \`${this.normalizeDisplayPath(plan.pages.state.filePath)}\``);
+      lines.push(`- Testing: \`${this.normalizeDisplayPath(plan.pages.testing.filePath)}\``);
+      lines.push(`- Troubleshooting: \`${this.normalizeDisplayPath(plan.pages.troubleshooting.filePath)}\``);
+      if (plan.pages.features.length > 0) {
+        lines.push("- Features: `docs/features/*.md`");
+      }
+      lines.push("");
+    }
+
+    return lines.join("\n").trimEnd() + "\n";
+  }
+
+  private createArtifact(
+    filePath: string,
+    content: string,
+    sourceModules: string[]
+  ): OutputArtifact {
+    return {
+      filePath,
+      content,
+      mimeType: "text/markdown",
+      size: Buffer.byteLength(content),
+      metadata: {
+        generatedAt: new Date().toISOString(),
+        sourceModules,
+        format: "markdown",
+      },
+    };
+  }
+
+  // â”€â”€ Index Rendering â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+  private normalizeDisplayPath(filePath: string): string {
+    return filePath.replace(/\\/g, "/");
+  }
 
   private renderIndex(ir: DocIR): string {
     const lines: string[] = [];
     const { metadata } = ir;
 
-    lines.push(`# ${metadata.name} — API Documentation`);
+    lines.push(`# ${metadata.name} â€” API Documentation`);
     lines.push("");
     if (metadata.description) {
       lines.push(`> ${metadata.description}`);
@@ -211,7 +294,7 @@ export class MarkdownRenderer implements RendererPlugin {
 
     lines.push(`# ${this.formatLanguageName(language)} API Reference`);
     lines.push("");
-    lines.push(`[← Back to Index](../README.md)`);
+    lines.push(`[â† Back to Index](../README.md)`);
     lines.push("");
 
     // Group by kind
@@ -238,7 +321,7 @@ export class MarkdownRenderer implements RendererPlugin {
     return lines.join("\n");
   }
 
-  // ── Module Rendering ────────────────────────────────────────
+  // â”€â”€ Module Rendering â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   private renderModule(mod: ModuleNode): string {
     const lines: string[] = [];
@@ -246,7 +329,7 @@ export class MarkdownRenderer implements RendererPlugin {
     // Header
     lines.push(`# ${mod.kind === "interface" ? "Interface" : mod.kind === "enum" ? "Enum" : "Class"} \`${mod.name}\``);
     lines.push("");
-    lines.push(`[← Back to ${this.formatLanguageName(mod.language)} Index](./README.md)`);
+    lines.push(`[â† Back to ${this.formatLanguageName(mod.language)} Index](./README.md)`);
     lines.push("");
 
     // Metadata badges
@@ -314,7 +397,7 @@ export class MarkdownRenderer implements RendererPlugin {
       for (const member of publicMembers) {
         const anchor = member.name.toLowerCase().replace(/[^a-z0-9]/g, "-");
         const desc = member.description.split("\n")[0].substring(0, 80);
-        const deprecated = member.deprecated ? " ⚠️" : "";
+        const deprecated = member.deprecated ? " âš ï¸" : "";
         lines.push(`| [\`${member.name}\`](#${anchor})${deprecated} | ${member.kind} | ${desc} |`);
       }
       lines.push("");
@@ -356,7 +439,7 @@ export class MarkdownRenderer implements RendererPlugin {
     return lines.join("\n");
   }
 
-  // ── Member Rendering ────────────────────────────────────────
+  // â”€â”€ Member Rendering â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   private renderMember(member: MemberNode): string[] {
     const lines: string[] = [];
@@ -374,7 +457,7 @@ export class MarkdownRenderer implements RendererPlugin {
 
     // Deprecation warning
     if (member.deprecated) {
-      lines.push(`> ⚠️ **Deprecated:** ${member.deprecated.message}`);
+      lines.push(`> âš ï¸ **Deprecated:** ${member.deprecated.message}`);
       if (member.deprecated.replacement) {
         lines.push(`> Use \`${member.deprecated.replacement}\` instead.`);
       }
@@ -402,7 +485,7 @@ export class MarkdownRenderer implements RendererPlugin {
       for (const param of member.parameters) {
         const required = param.isOptional ? "No" : "Yes";
         const type = `\`${param.type.name}\``;
-        const desc = param.description || (param.defaultValue ? `Default: \`${param.defaultValue}\`` : "—");
+        const desc = param.description || (param.defaultValue ? `Default: \`${param.defaultValue}\`` : "â€”");
         lines.push(`| \`${param.name}\` | ${type} | ${required} | ${desc} |`);
       }
       lines.push("");
@@ -415,7 +498,7 @@ export class MarkdownRenderer implements RendererPlugin {
         (t: MemberNode["tags"][number]) => t.tag === "returns" || t.tag === "return"
       );
       if (returnTag) {
-        lines.push(`— ${returnTag.description}`);
+        lines.push(`â€” ${returnTag.description}`);
       }
       lines.push("");
     }
@@ -425,7 +508,7 @@ export class MarkdownRenderer implements RendererPlugin {
       lines.push("**Throws:**");
       lines.push("");
       for (const t of member.throws) {
-        lines.push(`- \`${t.type}\` — ${t.description}`);
+        lines.push(`- \`${t.type}\` â€” ${t.description}`);
       }
       lines.push("");
     }
@@ -452,18 +535,18 @@ export class MarkdownRenderer implements RendererPlugin {
     return lines;
   }
 
-  // ── ADR Rendering ───────────────────────────────────────────
+  // â”€â”€ ADR Rendering â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   private renderADRIndex(adrs: DocIR["adrs"]): string {
     const lines: string[] = [];
     lines.push("# Architecture Decision Records");
     lines.push("");
-    lines.push("[← Back to Index](../README.md)");
+    lines.push("[â† Back to Index](../README.md)");
     lines.push("");
     lines.push("| ID | Title | Status | Date |");
     lines.push("|----|-------|--------|------|");
     for (const adr of adrs) {
-      const statusEmoji = { accepted: "✅", proposed: "📋", deprecated: "⚠️", superseded: "🔄", rejected: "❌" }[adr.status] || "";
+      const statusEmoji = { accepted: "âœ…", proposed: "ðŸ“‹", deprecated: "âš ï¸", superseded: "ðŸ”„", rejected: "âŒ" }[adr.status] || "";
       lines.push(`| [${adr.id}](./${adr.id}.md) | ${adr.title} | ${statusEmoji} ${adr.status} | ${adr.date} |`);
     }
     return lines.join("\n");
@@ -486,13 +569,13 @@ export class MarkdownRenderer implements RendererPlugin {
     ].filter((l) => l !== undefined).join("\n");
   }
 
-  // ── Changelog Rendering ─────────────────────────────────────
+  // â”€â”€ Changelog Rendering â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   private renderChangelog(entries: DocIR["changelog"]): string {
     const lines: string[] = ["# Changelog", ""];
 
     for (const entry of entries) {
-      lines.push(`## [${entry.version}] — ${entry.date}`);
+      lines.push(`## [${entry.version}] â€” ${entry.date}`);
       lines.push("");
 
       const sections = [
@@ -519,7 +602,7 @@ export class MarkdownRenderer implements RendererPlugin {
     return lines.join("\n");
   }
 
-  // ── Coverage Rendering ──────────────────────────────────────
+  // â”€â”€ Coverage Rendering â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   private renderCoverageReport(coverage: CoverageScore): string[] {
     const lines: string[] = [];
@@ -529,11 +612,11 @@ export class MarkdownRenderer implements RendererPlugin {
     lines.push("");
     lines.push("| Check | Status |");
     lines.push("|-------|--------|");
-    lines.push(`| Module description | ${b.description ? "✅" : "❌"} |`);
-    lines.push(`| Parameter docs | ${b.parameters >= 80 ? "✅" : b.parameters >= 50 ? "⚠️" : "❌"} ${b.parameters}% |`);
-    lines.push(`| Return type docs | ${b.returnType ? "✅" : "❌"} |`);
-    lines.push(`| Throws docs | ${b.throws >= 80 ? "✅" : b.throws >= 50 ? "⚠️" : "❌"} ${b.throws}% |`);
-    lines.push(`| Examples | ${b.examples ? "✅" : "❌"} |`);
+    lines.push(`| Module description | ${b.description ? "âœ…" : "âŒ"} |`);
+    lines.push(`| Parameter docs | ${b.parameters >= 80 ? "âœ…" : b.parameters >= 50 ? "âš ï¸" : "âŒ"} ${b.parameters}% |`);
+    lines.push(`| Return type docs | ${b.returnType ? "âœ…" : "âŒ"} |`);
+    lines.push(`| Throws docs | ${b.throws >= 80 ? "âœ…" : b.throws >= 50 ? "âš ï¸" : "âŒ"} ${b.throws}% |`);
+    lines.push(`| Examples | ${b.examples ? "âœ…" : "âŒ"} |`);
     lines.push("");
 
     if (coverage.undocumented.length > 0) {
@@ -548,7 +631,7 @@ export class MarkdownRenderer implements RendererPlugin {
     return lines;
   }
 
-  // ── Helpers ─────────────────────────────────────────────────
+  // â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   private groupByLanguage(modules: ModuleNode[]): Map<string, ModuleNode[]> {
     const map = new Map<string, ModuleNode[]>();
@@ -592,8 +675,9 @@ export class MarkdownRenderer implements RendererPlugin {
   private coverageBar(score: number): string {
     const filled = Math.round(score / 10);
     const empty = 10 - filled;
-    return `${"█".repeat(filled)}${"░".repeat(empty)}`;
+    return `${"â–ˆ".repeat(filled)}${"â–‘".repeat(empty)}`;
   }
 }
 
 export default MarkdownRenderer;
+

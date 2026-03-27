@@ -23,6 +23,8 @@ const MarkdownOutputSchema = z.object({
   filePerModule: z.boolean().default(true),
   tableOfContents: z.boolean().default(true),
   linkStyle: z.enum(["relative", "absolute"]).default("relative"),
+  includeSourceLinks: z.boolean().default(true),
+  collapsibleSections: z.boolean().default(true),
 });
 
 const HtmlOutputSchema = z.object({
@@ -103,6 +105,10 @@ const ChangelogConfigSchema = z.object({
   includeCommitHash: z.boolean().default(false),
 });
 
+const DocumentationConfigSchema = z.object({
+  mode: z.enum(["developer", "exhaustive"]).default("developer"),
+});
+
 export const DocGenConfigSchema = z.object({
   project: z.object({
     name: z.string().min(1),
@@ -115,6 +121,7 @@ export const DocGenConfigSchema = z.object({
   validation: ValidationConfigSchema.default({}),
   adr: ADRConfigSchema.default({}),
   changelog: ChangelogConfigSchema.default({}),
+  documentation: DocumentationConfigSchema.default({}),
   plugins: z.array(z.string()).default([]),
 });
 
@@ -128,6 +135,7 @@ export type HtmlOutput = z.infer<typeof HtmlOutputSchema>;
 export type PdfOutput = z.infer<typeof PdfOutputSchema>;
 export type ConfluenceOutput = z.infer<typeof ConfluenceOutputSchema>;
 export type ValidationConfig = z.infer<typeof ValidationConfigSchema>;
+export type DocumentationConfig = z.infer<typeof DocumentationConfigSchema>;
 
 // ─── Config Loader ──────────────────────────────────────────────
 
@@ -221,7 +229,7 @@ export function generateDefaultConfig(options: {
     output: {
       markdown: {
         enabled: true,
-        outputDir: "docs/api",
+        outputDir: "docs",
       },
       html: {
         enabled: false,
@@ -234,6 +242,9 @@ export function generateDefaultConfig(options: {
       confluence: {
         enabled: false,
       },
+    },
+    documentation: {
+      mode: "developer",
     },
     validation: {
       coverage: {

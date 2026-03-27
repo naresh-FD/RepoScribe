@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+﻿#!/usr/bin/env node
 
 import { rmSync } from "node:fs";
 import { spawnSync } from "node:child_process";
@@ -8,7 +8,7 @@ import path from "node:path";
 const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const targetRoot = process.cwd();
 
-cleanOutput(path.join(targetRoot, "docs", "components"));
+cleanOutput(path.join(targetRoot, "docs", "generated"));
 cleanOutput(path.join(targetRoot, "docs", "pdf"));
 
 run("npm", ["run", "build"], packageRoot);
@@ -33,3 +33,4 @@ function run(command, args, cwd) {
     process.exit(result.status ?? 1);
   }
 }
+
