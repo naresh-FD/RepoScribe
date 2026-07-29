@@ -7,7 +7,7 @@ This guide explains how to use RepoScribe for PDF documentation when your projec
 - React and TypeScript projects are supported today through `@docgen/parser-typescript`.
 - RepoScribe is currently focused on React and Java Spring Boot projects.
 - The current built-in PDF renderer produces text-first PDFs.
-- Java Spring Boot parsing is the next supported track, but it is not implemented yet end to end.
+- Java Spring Boot parsing is supported through `@docgen/parser-java`.
 - Images and charts can already live beside your generated Markdown docs, but rendering them inside the combined PDF will need a richer PDF or HTML renderer.
 
 ## React Projects
@@ -73,13 +73,13 @@ Recommended usage:
 
 ## Java Projects
 
-Java is not ready in the current RepoScribe package because `@docgen/parser-java` is still planned and not implemented here yet.
+Java and Spring Boot sources are supported by `@docgen/parser-java`.
 
 What you can do today:
 
 - Keep the same Markdown and PDF output structure.
 - Add manual Markdown docs for architecture, flow diagrams, and charts.
-- Add a Java parser plugin later when that package is implemented.
+- Generate generic Java API documentation and Spring REST endpoint tables.
 
 Example future-facing config:
 

@@ -34,6 +34,7 @@ import {
   Type,
   Scope,
   SyntaxKind,
+  SymbolFlags,
   Node,
 } from "ts-morph";
 
@@ -59,6 +60,8 @@ import {
   createEmptyCoverage,
   createDefaultSourceFacts,
   SourceFacts,
+  ReactMetadata,
+  ReactProp,
 } from "@docgen/core";
 
 export class TypeScriptParser implements ParserPlugin {
@@ -211,6 +214,7 @@ export class TypeScriptParser implements ParserPlugin {
       members.push(this.parseAccessor(setter, "setter"));
     }
 
+    const react = this.extractClassReactMetadata(cls);
     return {
       id: this.buildId(filePath, name),
       name,
@@ -228,6 +232,7 @@ export class TypeScriptParser implements ParserPlugin {
       extends: cls.getExtends()?.getText(),
       implements: cls.getImplements().map((i) => i.getText()),
       exports: { isDefault: cls.isDefaultExport(), isNamed: cls.isExported() },
+      react,
       sourceFacts: this.buildSourceFacts(cls.getSourceFile(), filePath, {
         kind: "class",
         name,
@@ -440,6 +445,7 @@ export class TypeScriptParser implements ParserPlugin {
       decorators: [],
       typeParameters: this.extractGenerics(func),
       exports: { isDefault: func.isDefaultExport(), isNamed: func.isExported() },
+      react: this.extractFunctionReactMetadata(func, name),
       sourceFacts: this.buildSourceFacts(func.getSourceFile(), filePath, {
         kind: "function",
         name,
@@ -503,6 +509,7 @@ export class TypeScriptParser implements ParserPlugin {
         isNamed: true,
         exportedName: name,
       },
+      react: this.extractFunctionReactMetadata(initializer, name, declaration),
       sourceFacts: this.buildSourceFacts(declaration.getSourceFile(), filePath, {
         kind: "function",
         name,
@@ -510,6 +517,171 @@ export class TypeScriptParser implements ParserPlugin {
         members,
       }),
     };
+  }
+
+  private extractFunctionReactMetadata(
+    callable: FunctionDeclaration | ArrowFunction | FunctionExpression,
+    name: string,
+    declaration?: VariableDeclaration
+  ): ReactMetadata | undefined {
+    const hookDependencies = this.extractHookDependencies(callable);
+    const isHook = /^use[A-Z0-9]/.test(name) && hookDependencies.length > 0;
+    const declaredType = declaration?.getTypeNode()?.getText() ?? "";
+    const isComponent =
+      /\b(?:React\.)?(?:FC|FunctionComponent)\s*</.test(declaredType) ||
+      this.isReactRenderType(callable.getReturnType());
+
+    const metadata: ReactMetadata = {};
+    if (isComponent) {
+      const parameter = callable.getParameters()[0];
+      const propsType = this.resolvePropsType(callable, declaration);
+      metadata.component = {
+        componentType: "function",
+        propsType: propsType?.getText(callable),
+        props: propsType
+          ? this.extractReactProps(
+              propsType,
+              callable,
+              this.extractDestructuringDefaults(parameter),
+              this.extractDefaultProps(callable.getSourceFile(), name)
+            )
+          : [],
+        state: [],
+      };
+    }
+
+    if (isHook) {
+      const returnType = callable.getReturnType();
+      const tupleElements = returnType.isTuple()
+        ? returnType.getTupleElements().map((type) => this.buildTypeRef(type))
+        : undefined;
+      metadata.hook = {
+        dependencies: hookDependencies,
+        returnShape: tupleElements
+          ? "tuple"
+          : returnType.getProperties().length > 0
+            ? "object"
+            : "value",
+        tupleElements,
+      };
+    }
+
+    return metadata.component || metadata.hook ? metadata : undefined;
+  }
+
+  private extractClassReactMetadata(
+    cls: ClassDeclaration
+  ): ReactMetadata | undefined {
+    const extendsClause = cls.getExtends();
+    if (!extendsClause || !/\b(?:React\.)?(?:Pure)?Component\b/.test(extendsClause.getExpression().getText())) {
+      return undefined;
+    }
+
+    const typeArguments = extendsClause.getTypeArguments();
+    const propsType = typeArguments[0]?.getType();
+    const stateType = typeArguments[1]?.getType();
+    return {
+      component: {
+        componentType: "class",
+        propsType: propsType?.getText(cls),
+        props: propsType ? this.extractReactProps(propsType, cls) : [],
+        stateType: stateType?.getText(cls),
+        state: stateType ? this.extractReactProps(stateType, cls) : [],
+      },
+    };
+  }
+
+  private isReactRenderType(type: Type): boolean {
+    const text = this.simplifyTypeName(type.getText());
+    const symbolName = type.getAliasSymbol()?.getName() ?? type.getSymbol()?.getName() ?? "";
+    return /^(?:JSX\.)?Element$|ReactElement|ReactNode/.test(text) ||
+      /^(?:Element|ReactElement|ReactNode)$/.test(symbolName);
+  }
+
+  private resolvePropsType(
+    callable: FunctionDeclaration | ArrowFunction | FunctionExpression,
+    declaration?: VariableDeclaration
+  ): Type | undefined {
+    const parameter = callable.getParameters()[0];
+    if (parameter) {
+      return parameter.getType();
+    }
+    const declaredType = declaration?.getType();
+    return declaredType?.getAliasTypeArguments()[0] ?? declaredType?.getTypeArguments()[0];
+  }
+
+  private extractReactProps(
+    type: Type,
+    location: Node,
+    destructuringDefaults = new Map<string, string>(),
+    defaultProps = new Map<string, string>()
+  ): ReactProp[] {
+    return type.getProperties().map((symbol) => {
+      const declaration = symbol.getValueDeclaration() ?? symbol.getDeclarations()[0];
+      const propType = declaration
+        ? symbol.getTypeAtLocation(declaration)
+        : symbol.getTypeAtLocation(location);
+      return {
+        name: symbol.getName(),
+        type: this.buildTypeRef(propType),
+        required: !symbol.hasFlags(SymbolFlags.Optional),
+        defaultValue:
+          destructuringDefaults.get(symbol.getName()) ??
+          defaultProps.get(symbol.getName()),
+        description: declaration ? this.extractDescription(declaration) : "",
+      };
+    });
+  }
+
+  private extractDestructuringDefaults(
+    parameter?: ParameterDeclaration
+  ): Map<string, string> {
+    const defaults = new Map<string, string>();
+    const nameNode = parameter?.getNameNode();
+    if (nameNode && Node.isObjectBindingPattern(nameNode)) {
+      for (const element of nameNode.getElements()) {
+        const initializer = element.getInitializer();
+        if (initializer) {
+          defaults.set(element.getName(), initializer.getText());
+        }
+      }
+    }
+    return defaults;
+  }
+
+  private extractDefaultProps(sourceFile: SourceFile, componentName: string): Map<string, string> {
+    const defaults = new Map<string, string>();
+    for (const assignment of sourceFile.getDescendantsOfKind(SyntaxKind.BinaryExpression)) {
+      if (
+        assignment.getOperatorToken().getText() !== "=" ||
+        assignment.getLeft().getText() !== `${componentName}.defaultProps`
+      ) {
+        continue;
+      }
+      const right = assignment.getRight();
+      if (Node.isObjectLiteralExpression(right)) {
+        for (const property of right.getProperties()) {
+          if (Node.isPropertyAssignment(property)) {
+            defaults.set(property.getName(), property.getInitializerOrThrow().getText());
+          }
+        }
+      }
+    }
+    return defaults;
+  }
+
+  private extractHookDependencies(
+    callable: FunctionDeclaration | ArrowFunction | FunctionExpression
+  ): string[] {
+    const dependencies = new Set<string>();
+    for (const call of callable.getDescendantsOfKind(SyntaxKind.CallExpression)) {
+      const expression = call.getExpression().getText();
+      const hookName = expression.split(".").pop() ?? expression;
+      if (/^use[A-Z0-9]/.test(hookName)) {
+        dependencies.add(expression);
+      }
+    }
+    return Array.from(dependencies);
   }
 
   // ── Member Parsing ──────────────────────────────────────────

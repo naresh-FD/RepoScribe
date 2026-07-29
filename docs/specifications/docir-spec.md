@@ -135,6 +135,7 @@ There is no dedicated object for this type. It appears as a string literal union
 | `extends` | `string` | No | Name of the parent class, if any. |
 | `implements` | `string[]` | No | Names of implemented interfaces, if any. |
 | `exports` | `ExportInfo` | No | Export information (default, named, re-export). |
+| `react` | `ReactMetadata` | No | Structured React component props/state or custom-hook metadata. |
 
 **ModuleKind enum values:** `"class"` | `"interface"` | `"module"` | `"namespace"` | `"enum"` | `"type-alias"` | `"function"`
 
@@ -224,6 +225,7 @@ There is no dedicated object for this type. It appears as a string literal union
 | `since` | `string` | No | Version when this member was introduced. |
 | `overrides` | `string` | No | Parent class member name that this member overrides. |
 | `decorators` | `DecoratorNode[]` | Yes | Decorators/annotations applied to this member. |
+| `endpoint` | `EndpointInfo` | No | Structured HTTP endpoint metadata for controller methods. |
 
 **MemberKind enum values:** `"method"` | `"property"` | `"field"` | `"constructor"` | `"getter"` | `"setter"` | `"index-signature"` | `"enum-member"`
 
@@ -310,7 +312,38 @@ There is no dedicated object for this type. It appears as a string literal union
 
 ---
 
-### 3.6 ParamNode
+### 3.6 ReactMetadata
+
+Optional `ModuleNode.react` metadata distinguishes React constructs without changing
+the language-agnostic module kinds:
+
+- `component.componentType`: `"function"` or `"class"`.
+- `component.propsType` and `component.stateType`: resolved source type names.
+- `component.props` and `component.state`: arrays containing `name`, `type`,
+  `required`, optional `defaultValue`, and `description`.
+- `hook.dependencies`: hook calls made by a custom hook.
+- `hook.returnShape`: `"tuple"`, `"object"`, or `"value"`.
+- `hook.tupleElements`: resolved tuple element types when applicable.
+
+All React metadata is optional. Non-React modules omit the field.
+
+### 3.7 EndpointInfo
+
+Optional `MemberNode.endpoint` metadata describes an HTTP endpoint:
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `httpMethod` | `"GET" \| "POST" \| "PUT" \| "DELETE" \| "PATCH" \| "ANY"` | Yes | Resolved HTTP method. |
+| `path` | `string` | Yes | Full route including any class-level prefix. |
+| `pathVariables` | `EndpointParameter[]` | Yes | Path-bound parameters. |
+| `queryParameters` | `EndpointParameter[]` | Yes | Query parameters with required/default metadata. |
+| `requestBody` | `TypeRef \| null` | Yes | Request-body type, or `null`. |
+| `responseType` | `TypeRef` | Yes | Response type with wrappers such as `ResponseEntity<T>` removed. |
+
+Each `EndpointParameter` contains `name`, `type`, `required`, and an optional
+`defaultValue`. Members without endpoint semantics omit `endpoint`.
+
+### 3.8 ParamNode
 
 **Purpose:** Describes a single parameter of a method, function, or constructor.
 

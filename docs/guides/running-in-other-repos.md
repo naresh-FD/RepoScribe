@@ -1,26 +1,98 @@
 # Using RepoScribe in Other Repositories
 
-This guide shows the simplest way to use RepoScribe from another repository with one line in that repo's `package.json`.
+This guide installs DocGen in a pnpm project and exposes it through ordinary
+`package.json` scripts. No global install or manually-created symlink is required.
 
-## What You Add In The Target Repo
+## Recommended: GitHub Dev Dependency
 
-1. Install RepoScribe as a dev dependency.
-
-```bash
-npm install --save-dev file:../RepoScribe
-```
-
-You can also use a Git URL instead of `file:../RepoScribe` if you keep RepoScribe in Git.
-
-2. Add one script in the target repo `package.json`.
+Pin DocGen as a development dependency. A commit SHA or release tag is preferable to a
+moving branch for reproducible CI builds; `main` is shown here for teams that want the
+latest version.
 
 ```json
 {
+  "devDependencies": {
+    "docgen": "github:naresh-FD/RepoScribe#main"
+  },
   "scripts": {
-    "docs:generate": "reposcribe-docs"
+    "docs": "docgen generate",
+    "docs:validate": "docgen validate --json",
+    "docs:init": "docgen init",
+    "docs:diff": "docgen diff --base main --json"
   }
 }
 ```
+
+For pnpm 10 and later, allow DocGen's source build in `pnpm-workspace.yaml`:
+
+```yaml
+onlyBuiltDependencies:
+  - docgen
+```
+
+```bash
+pnpm install
+pnpm run docs
+```
+
+DocGen is a source-based Git dependency and its `prepare` script compiles the workspace
+packages during installation. pnpm 10 and later do not run dependency build scripts
+unless the package is explicitly allowed. The `onlyBuiltDependencies` entry above
+allows only DocGen's build.
+
+The installed package supplies the `docgen` executable in the host project's
+`node_modules/.bin`. pnpm scripts add that directory to `PATH`, so all four scripts work
+without `pnpm link`.
+
+## Alternatives and pnpm Trade-offs
+
+### Local path link
+
+Use this while developing DocGen and the host side by side:
+
+```json
+{
+  "devDependencies": {
+    "docgen": "link:../RepoScribe"
+  }
+}
+```
+
+Run `pnpm --dir ../RepoScribe install && pnpm --dir ../RepoScribe build` once after
+cloning DocGen, then run the host scripts normally. `link:` points at the existing
+directory, so pnpm does not install or build DocGen for the host. That makes changes
+immediately visible but means the link is machine-specific and unsuitable for CI.
+
+Avoid a global `pnpm link`: pnpm's strict, symlinked `node_modules` layout can leave
+linked packages resolving peers or workspace packages from the wrong project. A
+declarative `link:` dependency is reproducible within a local checkout, but DocGen's
+workspace packages must still be installed and built in the DocGen repository.
+
+### Direct `pnpm dlx` / `npx`
+
+For a one-off command, a Git ref can be invoked without saving a dependency:
+
+```bash
+pnpm dlx github:naresh-FD/RepoScribe#main docgen generate
+```
+
+This is intentionally not the default. It resolves and may download the package on each
+uncached run, is harder to pin consistently across scripts, and is subject to the same
+pnpm dependency-build approval for this source-based package. `npx` also uses npm's
+resolver rather than the host's pnpm lockfile.
+
+### Why the Git dependency is the default
+
+The Git dependency is recorded in the host lockfile, installs its own dependency graph,
+and exposes a project-local binary. It therefore avoids the strict-resolution and peer
+dependency ambiguity common with links. DocGen does not currently declare peer
+dependencies. Its internal workspace dependencies are resolved and built inside the Git
+package during `prepare`; consumers should not add `workspace:` references to the host,
+because that protocol only resolves packages in the host workspace.
+
+## Configure DocGen
+
+Add a `.docgen.yaml` in the target repo.
 
 3. Add a `.docgen.yaml` in the target repo.
 
@@ -79,11 +151,7 @@ changelog:
   outputFile: CHANGELOG.md
 ```
 
-4. Run the script from the target repo.
-
-```bash
-npm run docs:generate
-```
+Run `pnpm run docs` from the target repository.
 
 ## What Happens When It Runs
 
@@ -97,20 +165,6 @@ npm run docs:generate
 - `docs/components/README.md`
 - `docs/components/<language>/<component>.md`
 - `docs/pdf/components.pdf`
-
-## Direct CLI Option
-
-If you want the lower-level CLI instead of the high-level generator script, use:
-
-```json
-{
-  "scripts": {
-    "docs:generate": "reposcribe-cli generate --format markdown pdf"
-  }
-}
-```
-
-That command still runs from the target repo and reads the target repo's `.docgen.yaml`.
 
 ## Notes
 
@@ -152,5 +206,5 @@ output:
 
 Current status:
 
-- React and TypeScript work today.
-- Java Spring Boot is the target second path and the parser is still to be implemented.
+- React and TypeScript work through `@docgen/parser-typescript`.
+- Java and Spring Boot work through `@docgen/parser-java`.

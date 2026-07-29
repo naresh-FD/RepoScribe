@@ -19,6 +19,7 @@
 |----------|---------|-------|
 | [Core](technical/core.md) | `@docgen/core` | 2,283 |
 | [TypeScript Parser](technical/parser-typescript.md) | `@docgen/parser-typescript` | 1,301 |
+| Java Parser | `@docgen/parser-java` | Shipped |
 | [Markdown Renderer](technical/renderer-markdown.md) | `@docgen/renderer-markdown` | 1,305 |
 | [CLI](technical/cli.md) | `@docgen/cli` | 778 |
 

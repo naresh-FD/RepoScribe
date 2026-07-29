@@ -64,6 +64,13 @@ export class Orchestrator {
     this.logger = options.logger;
   }
 
+  /** Parse and transform source into DocIR without invoking any renderer. */
+  async snapshot(): Promise<DocIR> {
+    const registry = await this.loadAllPlugins();
+    const docir = await this.parseAll(registry);
+    return this.transformAll(docir, registry);
+  }
+
   /** Full pipeline: parse → transform → render */
   async generate(formats?: string[]): Promise<GenerateResult> {
     const start = Date.now();

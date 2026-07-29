@@ -75,4 +75,43 @@ describe("TypeScriptParser source facts", () => {
     expect(byName.get("useProfile")?.sourceFacts.fileRole).toBe("hook");
     expect(byName.get("index")?.sourceFacts.isReExportOnly).toBe(true);
   });
+
+  it("extracts React component props, defaults, and custom-hook tuple metadata", async () => {
+    const fixture = path.join(process.cwd(), "src", "__fixtures__", "react.tsx");
+    const { TypeScriptParser } = await import("./index");
+    const parser = new TypeScriptParser();
+    const docir = await parser.parse([fixture], {
+      name: "typescript",
+      source: "src/__fixtures__",
+      include: ["**/*.tsx"],
+      exclude: [],
+      parser: "@docgen/parser-typescript",
+      options: {},
+    });
+
+    const button = docir.modules.find((module) => module.name === "Button");
+    expect(button?.react?.component?.props).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: "label",
+          required: true,
+          description: "Text displayed inside the button.",
+        }),
+        expect.objectContaining({
+          name: "tone",
+          required: false,
+          defaultValue: '"primary"',
+        }),
+      ])
+    );
+
+    const hook = docir.modules.find((module) => module.name === "useCounter");
+    expect(hook?.react?.hook).toEqual(
+      expect.objectContaining({
+        dependencies: ["useState", "useMemo"],
+        returnShape: "tuple",
+      })
+    );
+    expect(hook?.react?.hook?.tupleElements).toHaveLength(2);
+  });
 });

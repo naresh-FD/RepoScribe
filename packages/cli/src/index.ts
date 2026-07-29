@@ -44,6 +44,7 @@ program
   .description("Show documentation changes since last generation")
   .option("--base <ref>", "Git ref to compare against", "HEAD~1")
   .option("--json", "Output diff as JSON")
+  .option("--fail-on-breaking", "Exit with code 1 when breaking changes are detected")
   .action(diffCommand);
 
 program

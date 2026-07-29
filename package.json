@@ -4,10 +4,20 @@
   "private": true,
   "description": "Documentation generator focused on React and Java Spring Boot projects",
   "bin": {
+    "docgen": "scripts/run-docgen.cjs",
     "reposcribe-docs": "scripts/generate-docs.mjs",
     "reposcribe-cli": "scripts/run-docgen.cjs"
   },
-  "packageManager": "npm@10.9.3",
+  "files": [
+    "packages/*/dist/**",
+    "packages/*/package.json",
+    "scripts",
+    "templates",
+    "tsconfig.base.json",
+    "turbo.json",
+    "pnpm-workspace.yaml"
+  ],
+  "packageManager": "pnpm@11.9.0",
   "workspaces": [
     "packages/*"
   ],
@@ -17,8 +27,21 @@
     "lint": "turbo run lint",
     "clean": "turbo run clean",
     "docs:generate": "node scripts/generate-docs.mjs",
-    "docs:example": "npm run --prefix example/testgen docs:generate",
-    "prepare": "npm run build"
+    "docs:example": "pnpm --dir example/testgen docs:generate",
+    "prepare": "pnpm run build"
+  },
+  "dependencies": {
+    "chalk": "^4.1.2",
+    "commander": "^12.0.0",
+    "fast-glob": "^3.3.0",
+    "glob": "^10.3.0",
+    "inquirer": "^9.2.0",
+    "ora": "^5.4.1",
+    "ts-morph": "^22.0.0",
+    "tree-sitter-wasms": "^0.1.13",
+    "web-tree-sitter": "0.20.8",
+    "yaml": "^2.4.0",
+    "zod": "^3.23.0"
   },
   "devDependencies": {
     "turbo": "^2.0.0",

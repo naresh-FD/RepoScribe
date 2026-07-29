@@ -10,7 +10,8 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@docgen/core": "*",
+    "@docgen/core": "workspace:*",
+    "fast-glob": "^3.3.0",
     "ts-morph": "^22.0.0"
   },
   "devDependencies": {

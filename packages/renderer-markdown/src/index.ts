@@ -384,6 +384,64 @@ export class MarkdownRenderer implements RendererPlugin {
       lines.push("");
     }
 
+    if (mod.react?.component) {
+      const component = mod.react.component;
+      lines.push("## Props");
+      lines.push("");
+      if (component.propsType) {
+        lines.push(`**Props type:** \`${component.propsType}\``);
+        lines.push("");
+      }
+      lines.push("| Prop | Type | Required | Default | Description |");
+      lines.push("|------|------|----------|---------|-------------|");
+      for (const prop of component.props) {
+        lines.push(
+          `| \`${prop.name}\` | \`${prop.type.raw}\` | ${prop.required ? "Yes" : "No"} | ` +
+          `${prop.defaultValue ? `\`${prop.defaultValue}\`` : "—"} | ${prop.description || "—"} |`
+        );
+      }
+      if (component.props.length === 0) {
+        lines.push("| — | — | — | — | No props |");
+      }
+      lines.push("");
+
+      if (component.componentType === "class" && component.stateType) {
+        lines.push("## State");
+        lines.push("");
+        lines.push(`**State type:** \`${component.stateType}\``);
+        lines.push("");
+        lines.push("| Field | Type | Description |");
+        lines.push("|-------|------|-------------|");
+        for (const field of component.state) {
+          lines.push(`| \`${field.name}\` | \`${field.type.raw}\` | ${field.description || "—"} |`);
+        }
+        lines.push("");
+      }
+    }
+
+    if (mod.react?.hook) {
+      lines.push("## Hook Signature");
+      lines.push("");
+      lines.push(`**Return shape:** ${mod.react.hook.returnShape}`);
+      lines.push("");
+      if (mod.react.hook.tupleElements) {
+        lines.push(
+          `**Tuple elements:** ${mod.react.hook.tupleElements
+            .map((type, index) => `\`${index}: ${type.raw}\``)
+            .join(", ")}`
+        );
+        lines.push("");
+      }
+      lines.push(
+        `**Hook dependencies:** ${
+          mod.react.hook.dependencies.length
+            ? mod.react.hook.dependencies.map((dependency) => `\`${dependency}\``).join(", ")
+            : "None"
+        }`
+      );
+      lines.push("");
+    }
+
     // Table of contents for members
     const publicMembers = mod.members.filter(
       (m: MemberNode) => m.visibility === "public" || m.visibility === "protected"
@@ -462,6 +520,41 @@ export class MarkdownRenderer implements RendererPlugin {
         lines.push(`> Use \`${member.deprecated.replacement}\` instead.`);
       }
       lines.push("");
+    }
+
+    if (member.endpoint) {
+      if (member.description) {
+        lines.push(member.description);
+        lines.push("");
+      }
+      lines.push("**REST Endpoint:**");
+      lines.push("");
+      lines.push("| Method | Path | Path variables | Query parameters | Request body | Response |");
+      lines.push("|--------|------|----------------|------------------|--------------|----------|");
+      const pathVariables = member.endpoint.pathVariables.length
+        ? member.endpoint.pathVariables
+            .map((parameter) => `\`${parameter.name}: ${parameter.type.raw}\``)
+            .join("<br>")
+        : "—";
+      const queryParameters = member.endpoint.queryParameters.length
+        ? member.endpoint.queryParameters
+            .map((parameter) => {
+              const optional = parameter.required ? "" : " (optional)";
+              const defaultValue = parameter.defaultValue
+                ? `, default: ${parameter.defaultValue}`
+                : "";
+              return `\`${parameter.name}: ${parameter.type.raw}\`${optional}${defaultValue}`;
+            })
+            .join("<br>")
+        : "—";
+      lines.push(
+        `| ${member.endpoint.httpMethod} | \`${member.endpoint.path}\` | ${pathVariables} | ` +
+        `${queryParameters} | ${
+          member.endpoint.requestBody ? `\`${member.endpoint.requestBody.raw}\`` : "—"
+        } | \`${member.endpoint.responseType.raw}\` |`
+      );
+      lines.push("");
+      return lines;
     }
 
     // Signature

@@ -9,8 +9,8 @@ RepoScribe is now focused on two project types:
 
 Current implementation status:
 
-- React and TypeScript support is available today.
-- Java Spring Boot is the next supported path and is being prepared in the repo direction and config/docs.
+- React and TypeScript support is available through the React-aware TypeScript parser.
+- Java and Spring Boot support is available through the tree-sitter Java WASM parser.
 
 ## What It Generates
 
@@ -85,16 +85,10 @@ Supported today through `@docgen/parser-typescript`:
 
 ## Java Spring Boot Support
 
-Java Spring Boot is the target second supported path.
-
-Phase 1 in this branch updates:
-
-- repo scope and messaging
-- default config examples
-- integration docs
-- CLI initialization defaults
-
-Parser and Spring Boot-specific rendering are still to be implemented.
+Java and Spring Boot are supported through `@docgen/parser-java`. The parser documents
+plain Java classes, interfaces, enums, methods, fields, constructors, Javadocs, Spring
+stereotypes, and REST mapping metadata. Markdown output renders controller methods as
+endpoint tables.
 
 ## PDF With Images And Charts
 
@@ -130,6 +124,7 @@ reposcribe-cli generate --format markdown pdf
 | `@docgen/core` | DocIR types, plugin system, orchestrator |
 | `@docgen/cli` | Command-line interface |
 | `@docgen/parser-typescript` | TypeScript and TSX parser for React-style projects |
+| `@docgen/parser-java` | Java and Spring Boot parser using the Java tree-sitter WASM grammar |
 | `@docgen/renderer-markdown` | Markdown renderer |
 | `@docgen/renderer-pdf` | Combined PDF renderer |
 

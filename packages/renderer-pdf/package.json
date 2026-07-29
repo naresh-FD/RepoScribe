@@ -10,7 +10,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@docgen/core": "1.0.0"
+    "@docgen/core": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.4.0",

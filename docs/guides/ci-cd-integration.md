@@ -697,7 +697,7 @@ The `docgen diff` command compares the current documentation state against a bas
 npx docgen diff --base main --json
 ```
 
-**Planned JSON output structure:**
+**JSON output structure:**
 
 ```json
 {
@@ -735,7 +735,7 @@ npx docgen diff --base main --json
 ```yaml
 - name: Check for breaking API changes
   run: |
-    npx docgen diff --base origin/main --json > diff-report.json
+    npx docgen diff --base origin/main --json --fail-on-breaking > diff-report.json
     node -e "
       const diff = JSON.parse(require('fs').readFileSync('diff-report.json', 'utf8'));
       if (diff.breaking) {

@@ -88,6 +88,29 @@ const SourceFactsSchema = z.object({
   usesServiceDependencies: z.boolean(),
 });
 
+const ReactPropSchema = z.object({
+  name: z.string().min(1),
+  type: TypeRefSchema,
+  required: z.boolean(),
+  defaultValue: z.string().optional(),
+  description: z.string(),
+});
+
+const ReactMetadataSchema = z.object({
+  component: z.object({
+    componentType: z.enum(["function", "class"]),
+    propsType: z.string().optional(),
+    props: z.array(ReactPropSchema),
+    stateType: z.string().optional(),
+    state: z.array(ReactPropSchema),
+  }).optional(),
+  hook: z.object({
+    dependencies: z.array(z.string()),
+    returnShape: z.enum(["tuple", "object", "value"]),
+    tupleElements: z.array(TypeRefSchema).optional(),
+  }).optional(),
+});
+
 const MemberNodeSchema = z.object({
   name: z.string().min(1),
   kind: z.enum([
@@ -121,6 +144,24 @@ const MemberNodeSchema = z.object({
   since: z.string().optional(),
   overrides: z.string().optional(),
   decorators: z.array(DecoratorNodeSchema),
+  endpoint: z.object({
+    httpMethod: z.enum(["GET", "POST", "PUT", "DELETE", "PATCH", "ANY"]),
+    path: z.string(),
+    pathVariables: z.array(z.object({
+      name: z.string().min(1),
+      type: TypeRefSchema,
+      required: z.boolean(),
+      defaultValue: z.string().optional(),
+    })),
+    queryParameters: z.array(z.object({
+      name: z.string().min(1),
+      type: TypeRefSchema,
+      required: z.boolean(),
+      defaultValue: z.string().optional(),
+    })),
+    requestBody: TypeRefSchema.nullable(),
+    responseType: TypeRefSchema,
+  }).optional(),
 });
 
 const ModuleNodeSchema = z.object({
@@ -166,6 +207,7 @@ const ModuleNodeSchema = z.object({
       exportedName: z.string().optional(),
     })
     .optional(),
+  react: ReactMetadataSchema.optional(),
   sourceFacts: SourceFactsSchema,
 });
 

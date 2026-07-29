@@ -47,7 +47,35 @@ export interface ModuleNode {
   extends?: string;
   implements?: string[];
   exports?: ExportInfo;
+  react?: ReactMetadata;
   sourceFacts: SourceFacts;
+}
+
+export interface ReactProp {
+  name: string;
+  type: TypeRef;
+  required: boolean;
+  defaultValue?: string;
+  description: string;
+}
+
+export interface ReactComponentInfo {
+  componentType: "function" | "class";
+  propsType?: string;
+  props: ReactProp[];
+  stateType?: string;
+  state: ReactProp[];
+}
+
+export interface ReactHookInfo {
+  dependencies: string[];
+  returnShape: "tuple" | "object" | "value";
+  tupleElements?: TypeRef[];
+}
+
+export interface ReactMetadata {
+  component?: ReactComponentInfo;
+  hook?: ReactHookInfo;
 }
 
 export type ModuleKind =
@@ -80,6 +108,23 @@ export interface MemberNode {
   since?: string;
   overrides?: string; // Parent class member it overrides
   decorators: DecoratorNode[];
+  endpoint?: EndpointInfo;
+}
+
+export interface EndpointParameter {
+  name: string;
+  type: TypeRef;
+  required: boolean;
+  defaultValue?: string;
+}
+
+export interface EndpointInfo {
+  httpMethod: "GET" | "POST" | "PUT" | "DELETE" | "PATCH" | "ANY";
+  path: string;
+  pathVariables: EndpointParameter[];
+  queryParameters: EndpointParameter[];
+  requestBody: TypeRef | null;
+  responseType: TypeRef;
 }
 
 export type MemberKind =
