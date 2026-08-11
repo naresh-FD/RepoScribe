@@ -7,6 +7,11 @@ RepoScribe is now focused on two project types:
 - React and TypeScript projects
 - Java Spring Boot projects
 
+## Web Documentation
+
+Browse the full guides and reference at
+[naresh-FD.github.io/RepoScribe](https://naresh-FD.github.io/RepoScribe/).
+
 Current implementation status:
 
 - React and TypeScript support is available through the React-aware TypeScript parser.
