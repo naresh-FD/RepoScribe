@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowRight,
   BookOpenText,
@@ -22,6 +22,7 @@ export function DocsShell({
   const [mobileOpen, setMobileOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [query, setQuery] = useState("");
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -37,6 +38,10 @@ export function DocsShell({
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
+
+  useEffect(() => {
+    if (searchOpen) searchInputRef.current?.focus();
+  }, [searchOpen]);
 
   const results = useMemo(() => {
     const normalized = query.trim().toLowerCase();
@@ -67,7 +72,7 @@ export function DocsShell({
           </Link>
 
           <nav className="topbar-actions" aria-label="Utility navigation">
-            <span className="version-pill">v1.0.0</span>
+            <span className="version-pill">v1.1.0</span>
             <button
               className="search-trigger"
               onClick={() => setSearchOpen(true)}
@@ -125,9 +130,9 @@ export function DocsShell({
           ))}
 
           <div className="sidebar-card">
-            <span className="sidebar-card-kicker">TWO OUTPUTS</span>
-            <strong>Markdown + PDF</strong>
-            <p>Readable in the repo. Portable everywhere else.</p>
+            <span className="sidebar-card-kicker">THREE OUTPUTS</span>
+            <strong>Markdown + HTML + PDF</strong>
+            <p>Reviewable in the repo, searchable on the web, and portable offline.</p>
           </div>
         </aside>
 
@@ -143,18 +148,23 @@ export function DocsShell({
       </div>
 
       {searchOpen && (
-        <div className="search-backdrop" role="presentation" onMouseDown={closeSearch}>
+        <div className="search-backdrop">
+          <button
+            type="button"
+            className="search-backdrop-dismiss"
+            aria-label="Close search"
+            onClick={closeSearch}
+          />
           <div
             className="search-dialog"
             role="dialog"
             aria-modal="true"
             aria-label="Search RepoScribe documentation"
-            onMouseDown={(event) => event.stopPropagation()}
           >
             <div className="search-input-row">
               <Search size={19} aria-hidden="true" />
               <input
-                autoFocus
+                ref={searchInputRef}
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
                 placeholder="Search guides, concepts, and commands…"

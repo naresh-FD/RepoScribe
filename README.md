@@ -32,6 +32,7 @@ Default `developer` mode produces a tight documentation set instead of one file 
 - `docs/testing/testing-guide.md`
 - `docs/troubleshooting.md`
 - one combined PDF guide under `docs/pdf`
+- an optional searchable static HTML site
 
 When you need symbol-by-symbol output, run exhaustive mode:
 
@@ -42,18 +43,18 @@ reposcribe-cli generate --mode exhaustive --format markdown pdf
 ## Quick Start In This Repo
 
 ```bash
-npm install
-npm run docs:generate
+pnpm install
+pnpm docs:generate
 ```
 
-RepoScribe reads [`.docgen.yaml`](F:/RepoScribe/.docgen.yaml). This repository keeps its generated output under `docs/generated` so it does not collide with the hand-written product docs already stored under `docs/`.
+RepoScribe reads [`.docgen.yaml`](./.docgen.yaml). This repository keeps its generated output under `docs/generated` so it does not collide with the hand-written product docs already stored under `docs/`.
 
 ## Use In Another Repo
 
 1. Install RepoScribe as a dev dependency.
 
 ```bash
-npm install --save-dev file:../RepoScribe
+pnpm add --save-dev ../RepoScribe
 ```
 
 2. Add one line in the target repo `package.json`.
@@ -71,13 +72,24 @@ npm install --save-dev file:../RepoScribe
 4. Run:
 
 ```bash
-npm run docs:generate
+pnpm docs:generate
 ```
 
 Guides:
 
-- [Using RepoScribe in Other Repositories](F:/RepoScribe/docs/guides/running-in-other-repos.md)
-- [PDF Generation With Images And Charts](F:/RepoScribe/docs/guides/pdf-images-and-charts.md)
+- [Using RepoScribe in Other Repositories](./docs/guides/running-in-other-repos.md)
+- [PDF Generation With Images And Charts](./docs/guides/pdf-images-and-charts.md)
+
+## Static HTML Output
+
+RepoScribe can generate a responsive, searchable documentation site without a framework build step. It includes source links, mobile navigation, an architecture diagram, and exhaustive API pages when requested.
+
+```bash
+reposcribe-cli generate --format html
+reposcribe-cli generate --mode exhaustive --format html
+```
+
+Configure the deployment path with `output.html.baseUrl`, for example `/RepoScribe/` on GitHub Pages.
 
 ## React Support
 
@@ -103,16 +115,14 @@ The current PDF renderer is text-first.
 - React projects work today.
 - For screenshots, diagrams, and charts inside the final PDF, the next step is a richer HTML-to-PDF renderer.
 
-See:
-
-- [PDF Generation With Images And Charts](F:/RepoScribe/docs/guides/pdf-images-and-charts.md)
+See [PDF Generation With Images And Charts](./docs/guides/pdf-images-and-charts.md).
 
 ## Main Commands
 
 ```bash
-npm run docs:generate
-npm run build
-npm run test
+pnpm docs:generate
+pnpm build
+pnpm test
 ```
 
 Package binaries:
@@ -131,14 +141,15 @@ reposcribe-cli generate --format markdown pdf
 | `@docgen/parser-typescript` | TypeScript and TSX parser for React-style projects |
 | `@docgen/parser-java` | Java and Spring Boot parser using the Java tree-sitter WASM grammar |
 | `@docgen/renderer-markdown` | Markdown renderer |
+| `@docgen/renderer-html` | Responsive static HTML renderer with search and diagrams |
 | `@docgen/renderer-pdf` | Combined PDF renderer |
 
 ## Development
 
 ```bash
-npm install
-npm run build
-npm run docs:generate
+pnpm install
+pnpm build
+pnpm docs:generate
 ```
 
 ## License

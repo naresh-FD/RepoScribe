@@ -98,7 +98,7 @@ export async function diffCommand(options: DiffOptions): Promise<void> {
       process.exitCode = 1;
     }
   } catch (error) {
-    console.error(`DocGen diff failed: ${(error as Error).message}`);
+    console.error(`RepoScribe diff failed: ${(error as Error).message}`);
     process.exitCode = 1;
   } finally {
     if (temporaryRoot) {

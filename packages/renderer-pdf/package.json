@@ -1,7 +1,7 @@
 {
   "name": "@docgen/renderer-pdf",
-  "version": "1.0.0",
-  "description": "PDF renderer plugin for DocGen",
+  "version": "1.1.0",
+  "description": "PDF renderer plugin for RepoScribe",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {

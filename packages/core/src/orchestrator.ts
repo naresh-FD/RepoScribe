@@ -314,7 +314,7 @@ export class Orchestrator {
       ignore,
       absolute: true,
       onlyFiles: true,
-    });
+    }).sort((left, right) => left.localeCompare(right));
   }
 
   private toGlobPattern(pattern: string): string {

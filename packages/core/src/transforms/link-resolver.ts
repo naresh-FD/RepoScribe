@@ -7,7 +7,7 @@ import type { TransformerPlugin, PluginConfig, PluginValidationResult } from "..
 
 export class LinkResolver implements TransformerPlugin {
   readonly name = "@docgen/transform-link-resolver";
-  readonly version = "1.0.0";
+  readonly version = "1.1.0";
   readonly type = "transformer" as const;
   readonly supports = ["*"];
   readonly priority = 100;

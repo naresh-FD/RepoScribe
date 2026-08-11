@@ -51,9 +51,9 @@ src/
   index.ts              # CLI entrypoint, command registration (57 lines)
   commands/
     init.ts             # Project initialization (116 lines)
-    generate.ts         # Documentation generation (118 lines)
-    validate.ts         # Coverage validation (90 lines)
-    diff.ts             # Doc diff against git ref (17 lines, stub)
+    generate.ts         # Documentation generation and watch mode
+    validate.ts         # Coverage validation with JSON output
+    diff.ts             # DocIR diff against a Git ref and breaking-change gate
     adr.ts              # Architecture Decision Records (114 lines)
   reporters/
     index.ts            # CI output formatters (82 lines)

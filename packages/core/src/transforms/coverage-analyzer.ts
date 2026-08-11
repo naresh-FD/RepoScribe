@@ -7,7 +7,7 @@ import type { TransformerPlugin, PluginConfig, PluginValidationResult } from "..
 
 export class CoverageAnalyzer implements TransformerPlugin {
   readonly name = "@docgen/transform-coverage";
-  readonly version = "1.0.0";
+  readonly version = "1.1.0";
   readonly type = "transformer" as const;
   readonly supports = ["*"];
   readonly priority = 50; // Run early — others may need coverage data

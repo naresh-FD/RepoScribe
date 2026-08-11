@@ -45,6 +45,7 @@ export const navGroups = [
     items: [
       { slug: "plugin-development", title: "Plugin development" },
       { slug: "ci-cd", title: "CI/CD integration" },
+      { slug: "roadmap", title: "Roadmap & phases" },
       { slug: "troubleshooting", title: "Troubleshooting" },
     ],
   },
@@ -198,6 +199,7 @@ output:
           headers: ["Format", "Best for", "Current behavior"],
           rows: [
             ["Markdown", "Repositories, reviews, and searchable knowledge", "Structured GFM files with cross-links"],
+            ["HTML", "Documentation portals and GitHub Pages", "Responsive static site with search, source links, and diagrams"],
             ["PDF", "Offline reading and a single shareable artifact", "One combined, text-first developer guide"],
           ],
         },
@@ -211,7 +213,7 @@ output:
         steps: [
           { title: "Parse", text: "A language plugin reads source files and normalizes symbols into DocIR." },
           { title: "Transform", text: "RepoScribe resolves links, analyzes documentation coverage, and plans the developer-facing information architecture." },
-          { title: "Render", text: "One or more renderer plugins turn DocIR into Markdown and PDF artifacts." },
+          { title: "Render", text: "One or more renderer plugins turn DocIR into Markdown, HTML, and PDF artifacts." },
           { title: "Validate", text: "Configured coverage rules report missing descriptions, parameters, returns, and examples." },
         ],
       },
@@ -252,6 +254,7 @@ Parser plugin → DocIR → Transforms → Renderer plugins
             ["@docgen/parser-typescript", "React-aware TypeScript and TSX parsing with ts-morph"],
             ["@docgen/parser-java", "Java and Spring metadata parsing with tree-sitter WASM"],
             ["@docgen/renderer-markdown", "GitHub-flavored Markdown output"],
+            ["@docgen/renderer-html", "Responsive static site, client-side search, and Mermaid diagrams"],
             ["@docgen/renderer-pdf", "One combined PDF developer guide"],
           ],
         },
@@ -418,15 +421,19 @@ languages:
 # Compact developer guide in Markdown and PDF
 reposcribe-cli generate --mode developer --format markdown pdf
 
-# Symbol-level reference output
-reposcribe-cli generate --mode exhaustive --format markdown`,
+# Symbol-level, searchable HTML reference
+reposcribe-cli generate --mode exhaustive --format html
+
+# Regenerate after source changes
+reposcribe-cli generate --watch --format markdown html`,
         },
         table: {
           headers: ["Option", "Meaning"],
           rows: [
             ["--mode developer", "Layered, task-oriented documentation (default)"],
             ["--mode exhaustive", "Module and symbol-level reference output"],
-            ["--format markdown pdf", "One or more requested renderers"],
+            ["--format markdown html pdf", "One or more requested renderers"],
+            ["--watch", "Regenerate after debounced source-file changes"],
           ],
         },
       },
@@ -448,10 +455,10 @@ reposcribe-cli generate --mode exhaustive --format markdown`,
         code: {
           language: "bash",
           label: "Terminal",
-          value: `npm install
-npm run build
-npm run test
-npm run docs:generate`,
+          value: `pnpm install
+pnpm build
+pnpm test
+pnpm docs:generate`,
         },
         bullets: [
           "build compiles every workspace package through Turbo",
@@ -531,7 +538,7 @@ export const kotlinParser: ParserPlugin = {
         ],
         note: {
           label: "Compatibility",
-          text: "DocIR decouples parsers and renderers. If your parser produces valid DocIR, it can use the existing Markdown and PDF renderers immediately.",
+          text: "DocIR decouples parsers and renderers. If your parser produces valid DocIR, it can use the existing Markdown, HTML, and PDF renderers immediately.",
         },
       },
       {
@@ -560,7 +567,7 @@ export const kotlinParser: ParserPlugin = {
         id: "recommended-workflow",
         title: "Recommended workflow",
         steps: [
-          { title: "Install deterministically", text: "Use npm ci (or your package manager's frozen-lockfile equivalent)." },
+          { title: "Install deterministically", text: "Use pnpm install --frozen-lockfile so workspace dependencies resolve consistently." },
           { title: "Build RepoScribe", text: "Compile workspace packages before invoking the local binary when using a file dependency." },
           { title: "Generate docs", text: "Run the same docs:generate script developers use locally." },
           { title: "Check the diff", text: "Fail the job when generated documentation no longer matches the committed source." },
@@ -584,12 +591,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.9.0
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: npm
-      - run: npm ci
-      - run: npm run docs:generate
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - run: pnpm test
+      - run: pnpm test:e2e
+      - run: pnpm docs:generate
       - run: git diff --exit-code -- docs`,
         },
       },
@@ -609,6 +622,114 @@ jobs:
           text: "Begin with a non-blocking 80% coverage target, then enable enforcement after the baseline is clean.",
           tone: "cool",
         },
+      },
+    ],
+  },
+  {
+    slug: "roadmap",
+    category: "Extend & ship",
+    title: "Roadmap & phases",
+    summary:
+      "See what RepoScribe v1.1 delivers now and how the product advances toward richer output, a public ecosystem, and team-scale documentation.",
+    readTime: "8 min read",
+    sections: [
+      {
+        id: "current-phase",
+        title: "Current phase: v1.1 foundation — delivered",
+        paragraphs: [
+          "RepoScribe is now in its v1.1 foundation phase. The core product is no longer limited to Markdown and a text-first PDF: it also produces a responsive static HTML documentation site and supports a dependable local and CI workflow.",
+          "The existing @docgen package identifiers remain as compatibility names while the user-facing product, CLI, generated metadata, and release version are aligned around RepoScribe v1.1.0.",
+        ],
+        table: {
+          headers: ["Area", "Delivered in v1.1"],
+          rows: [
+            ["Output", "Markdown, searchable static HTML, and combined PDF"],
+            ["HTML experience", "Responsive navigation, client-side search, source links, and Mermaid architecture diagrams"],
+            ["Developer loop", "Debounced watch mode, requested-format activation, and incremental TypeScript parser caching"],
+            ["Change safety", "DocIR API diffing, breaking-change exit codes, deterministic pnpm CI, and machine-readable validation"],
+            ["Quality", "React and Spring Boot end-to-end fixture plus package-level parser, renderer, core, and CLI tests"],
+          ],
+        },
+        note: {
+          label: "Current baseline",
+          text: "Documentation coverage is 35% against an 80% target. It is reported as advisory until the baseline is intentionally raised and enforcement is enabled.",
+          tone: "cool",
+        },
+      },
+      {
+        id: "phase-2",
+        title: "Phase 2: v1.2 rich portable output — next",
+        paragraphs: [
+          "The next phase makes the polished HTML experience portable into the combined PDF and strengthens visual parity across every output format.",
+        ],
+        bullets: [
+          "Use the HTML presentation pipeline as the browser-based PDF source",
+          "Embed screenshots, diagrams, charts, local assets, and full Unicode text",
+          "Add syntax highlighting and print-aware page headers, footers, and table-of-contents links",
+          "Introduce golden visual tests for representative React and Spring Boot guides",
+          "Keep Markdown lightweight and review-friendly while preserving equivalent content",
+        ],
+        note: {
+          label: "Exit criterion",
+          text: "A single DocIR snapshot produces Markdown, HTML, and PDF guides with matching content, working links, and diagrams that survive print output.",
+        },
+      },
+      {
+        id: "phase-3",
+        title: "Phase 3: v1.3 ecosystem and releases",
+        paragraphs: [
+          "Once output parity is stable, RepoScribe can become a conventional installable tool instead of depending on a local workspace checkout.",
+        ],
+        bullets: [
+          "Publish versioned packages under consistent @reposcribe names with compatibility guidance",
+          "Automate changelogs, release notes, package provenance, and semantic version checks",
+          "Version the DocIR schema and provide explicit compatibility and migration rules",
+          "Ship a parser and renderer plugin scaffold with tested examples",
+          "Run published-package smoke tests against sample React and Spring Boot repositories",
+        ],
+        note: {
+          label: "Exit criterion",
+          text: "A new project installs RepoScribe from a registry, initializes configuration, and generates all supported formats without cloning this repository.",
+          tone: "cool",
+        },
+      },
+      {
+        id: "phase-4",
+        title: "Phase 4: v1.4 language expansion and quality",
+        paragraphs: [
+          "Language coverage expands only after the plugin contract and release pipeline are stable, keeping new parsers from multiplying maintenance risk.",
+        ],
+        bullets: [
+          "Add a Python parser focused on typed applications and popular web frameworks",
+          "Improve framework discovery and generated starter configuration",
+          "Track parser performance budgets and documentation quality by ecosystem",
+          "Add fixtures for monorepos, mixed-language services, and larger public API surfaces",
+          "Offer opt-in generated summaries while keeping extracted facts traceable to source",
+        ],
+      },
+      {
+        id: "phase-5",
+        title: "Phase 5: v2.0 team documentation platform",
+        paragraphs: [
+          "The longer-term phase turns generation into a team workflow spanning pull requests, releases, and multiple repositories.",
+        ],
+        bullets: [
+          "Create documentation previews for pull requests and versioned release snapshots",
+          "Add cross-repository navigation and reusable organization-level themes",
+          "Support remote incremental caches for large workspaces",
+          "Provide hosted search and optional usage analytics with clear privacy controls",
+          "Expose policy controls for breaking API changes and documentation coverage trends",
+        ],
+      },
+      {
+        id: "graduation",
+        title: "How a phase graduates",
+        steps: [
+          { title: "Prove correctness", text: "Builds, package tests, and representative end-to-end fixtures must pass deterministically." },
+          { title: "Prove the workflow", text: "The feature must work from the CLI, configuration, CI, and generated documentation—not only through an internal API." },
+          { title: "Document the contract", text: "User behavior, configuration, compatibility, limitations, and migration notes must be reflected in the webdocs." },
+          { title: "Ship deliberately", text: "Only then is the version tagged, published, and treated as the baseline for the next phase." },
+        ],
       },
     ],
   },

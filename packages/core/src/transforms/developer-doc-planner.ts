@@ -84,7 +84,7 @@ interface ArchitectureDiagramContext {
 
 export class DeveloperDocumentationPlanner implements TransformerPlugin {
   readonly name = "@docgen/transform-developer-doc-planner";
-  readonly version = "1.0.0";
+  readonly version = "1.1.0";
   readonly type = "transformer" as const;
   readonly supports = ["*"];
   readonly priority = 150;

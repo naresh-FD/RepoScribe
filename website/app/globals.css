@@ -1167,12 +1167,22 @@ a {
 }
 
 .search-dialog {
+  position: relative;
+  z-index: 1;
   width: min(620px, calc(100% - 28px));
   overflow: hidden;
   border: 1px solid #d7d0c3;
   border-radius: 14px;
   background: var(--white);
   box-shadow: 0 28px 80px rgba(8,16,27,.3);
+}
+
+.search-backdrop-dismiss {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: transparent;
+  cursor: default;
 }
 
 .search-input-row {

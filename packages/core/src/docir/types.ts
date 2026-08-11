@@ -403,7 +403,7 @@ export function createEmptyDocIR(
       languages: metadata.languages ?? [],
       repository: metadata.repository,
       generatedAt: new Date().toISOString(),
-      generatorVersion: "1.0.0",
+      generatorVersion: "1.1.0",
     },
     modules: [],
     adrs: [],

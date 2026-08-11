@@ -11,7 +11,7 @@ function pagesHref(href: string) {
 }
 
 const Link = forwardRef<HTMLAnchorElement, LinkProps>(function Link(
-  { href, onClick, target, ...props },
+  { href, onClick, target, children, ...props },
   ref,
 ) {
   const resolvedHref = pagesHref(href);
@@ -42,7 +42,9 @@ const Link = forwardRef<HTMLAnchorElement, LinkProps>(function Link(
         window.dispatchEvent(new PopStateEvent("popstate"));
         window.scrollTo({ top: 0, behavior: "smooth" });
       }}
-    />
+    >
+      {children}
+    </a>
   );
 });
 

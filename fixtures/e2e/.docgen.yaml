@@ -1,0 +1,37 @@
+project:
+  name: RepoScribe E2E Fixture
+  version: 1.0.0
+  description: React and Spring Boot smoke-test project
+  repository: https://github.com/example/reposcribe-fixture
+
+languages:
+  - name: typescript
+    source: src/client
+    include: ["**/*.ts", "**/*.tsx"]
+    exclude: []
+    parser: "@docgen/parser-typescript"
+  - name: java
+    source: src/server/java
+    include: ["**/*.java"]
+    exclude: []
+    parser: "@docgen/parser-java"
+
+output:
+  markdown:
+    enabled: false
+  html:
+    enabled: true
+    engine: custom
+    outputDir: generated/html
+    baseUrl: /fixture/
+    search: true
+  pdf:
+    enabled: false
+
+documentation:
+  mode: developer
+
+validation:
+  coverage:
+    threshold: 0
+    enforce: true

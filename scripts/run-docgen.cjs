@@ -10,6 +10,7 @@ const workspaceAliases = new Map([
   ["@docgen/parser-typescript", path.join(packageRoot, "packages", "parser-typescript")],
   ["@docgen/parser-java", path.join(packageRoot, "packages", "parser-java")],
   ["@docgen/renderer-markdown", path.join(packageRoot, "packages", "renderer-markdown")],
+  ["@docgen/renderer-html", path.join(packageRoot, "packages", "renderer-html")],
   ["@docgen/renderer-pdf", path.join(packageRoot, "packages", "renderer-pdf")],
 ]);
 

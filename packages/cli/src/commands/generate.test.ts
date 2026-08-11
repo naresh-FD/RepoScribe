@@ -54,4 +54,9 @@ describe("generateCommand", () => {
     await generateCommand({ mode: "exhaustive" });
     expect(capturedConfig.documentation.mode).toBe("exhaustive");
   });
+
+  it("enables a renderer explicitly requested on the command line", async () => {
+    await generateCommand({ format: ["html"] });
+    expect(capturedConfig.output.html.enabled).toBe(true);
+  });
 });

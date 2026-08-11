@@ -39,7 +39,7 @@ const STEREOTYPES = new Set([
 
 export class JavaParser implements ParserPlugin {
   readonly name = "@docgen/parser-java";
-  readonly version = "1.0.0";
+  readonly version = "1.1.0";
   readonly type = "parser" as const;
   readonly language = "java" as const;
   readonly supports = ["java"];

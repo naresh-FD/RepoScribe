@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Markdown Renderer Plugin
  *
  * Generates GitHub-flavored Markdown documentation from DocIR.
@@ -20,7 +20,7 @@ import {
 
 export class MarkdownRenderer implements RendererPlugin {
   readonly name = "@docgen/renderer-markdown";
-  readonly version = "1.0.0";
+  readonly version = "1.1.0";
   readonly type = "renderer" as const;
   readonly format = "markdown";
   readonly supports = ["markdown", "md"];
@@ -205,7 +205,7 @@ export class MarkdownRenderer implements RendererPlugin {
     };
   }
 
-  // â”€â”€ Index Rendering â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Index Rendering ─────────────────────────────────────────
 
   private normalizeDisplayPath(filePath: string): string {
     return filePath.replace(/\\/g, "/");
@@ -215,7 +215,7 @@ export class MarkdownRenderer implements RendererPlugin {
     const lines: string[] = [];
     const { metadata } = ir;
 
-    lines.push(`# ${metadata.name} â€” API Documentation`);
+    lines.push(`# ${metadata.name} — API Documentation`);
     lines.push("");
     if (metadata.description) {
       lines.push(`> ${metadata.description}`);
@@ -294,7 +294,7 @@ export class MarkdownRenderer implements RendererPlugin {
 
     lines.push(`# ${this.formatLanguageName(language)} API Reference`);
     lines.push("");
-    lines.push(`[â† Back to Index](../README.md)`);
+    lines.push(`[← Back to Index](../README.md)`);
     lines.push("");
 
     // Group by kind
@@ -321,7 +321,7 @@ export class MarkdownRenderer implements RendererPlugin {
     return lines.join("\n");
   }
 
-  // â”€â”€ Module Rendering â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Module Rendering ────────────────────────────────────────
 
   private renderModule(mod: ModuleNode): string {
     const lines: string[] = [];
@@ -329,7 +329,7 @@ export class MarkdownRenderer implements RendererPlugin {
     // Header
     lines.push(`# ${mod.kind === "interface" ? "Interface" : mod.kind === "enum" ? "Enum" : "Class"} \`${mod.name}\``);
     lines.push("");
-    lines.push(`[â† Back to ${this.formatLanguageName(mod.language)} Index](./README.md)`);
+    lines.push(`[← Back to ${this.formatLanguageName(mod.language)} Index](./README.md)`);
     lines.push("");
 
     // Metadata badges
@@ -455,7 +455,7 @@ export class MarkdownRenderer implements RendererPlugin {
       for (const member of publicMembers) {
         const anchor = member.name.toLowerCase().replace(/[^a-z0-9]/g, "-");
         const desc = member.description.split("\n")[0].substring(0, 80);
-        const deprecated = member.deprecated ? " âš ï¸" : "";
+        const deprecated = member.deprecated ? " ⚠️" : "";
         lines.push(`| [\`${member.name}\`](#${anchor})${deprecated} | ${member.kind} | ${desc} |`);
       }
       lines.push("");
@@ -497,7 +497,7 @@ export class MarkdownRenderer implements RendererPlugin {
     return lines.join("\n");
   }
 
-  // â”€â”€ Member Rendering â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Member Rendering ────────────────────────────────────────
 
   private renderMember(member: MemberNode): string[] {
     const lines: string[] = [];
@@ -515,7 +515,7 @@ export class MarkdownRenderer implements RendererPlugin {
 
     // Deprecation warning
     if (member.deprecated) {
-      lines.push(`> âš ï¸ **Deprecated:** ${member.deprecated.message}`);
+      lines.push(`> ⚠️ **Deprecated:** ${member.deprecated.message}`);
       if (member.deprecated.replacement) {
         lines.push(`> Use \`${member.deprecated.replacement}\` instead.`);
       }
@@ -578,7 +578,7 @@ export class MarkdownRenderer implements RendererPlugin {
       for (const param of member.parameters) {
         const required = param.isOptional ? "No" : "Yes";
         const type = `\`${param.type.name}\``;
-        const desc = param.description || (param.defaultValue ? `Default: \`${param.defaultValue}\`` : "â€”");
+        const desc = param.description || (param.defaultValue ? `Default: \`${param.defaultValue}\`` : "—");
         lines.push(`| \`${param.name}\` | ${type} | ${required} | ${desc} |`);
       }
       lines.push("");
@@ -591,7 +591,7 @@ export class MarkdownRenderer implements RendererPlugin {
         (t: MemberNode["tags"][number]) => t.tag === "returns" || t.tag === "return"
       );
       if (returnTag) {
-        lines.push(`â€” ${returnTag.description}`);
+        lines.push(`— ${returnTag.description}`);
       }
       lines.push("");
     }
@@ -601,7 +601,7 @@ export class MarkdownRenderer implements RendererPlugin {
       lines.push("**Throws:**");
       lines.push("");
       for (const t of member.throws) {
-        lines.push(`- \`${t.type}\` â€” ${t.description}`);
+        lines.push(`- \`${t.type}\` — ${t.description}`);
       }
       lines.push("");
     }
@@ -628,18 +628,18 @@ export class MarkdownRenderer implements RendererPlugin {
     return lines;
   }
 
-  // â”€â”€ ADR Rendering â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── ADR Rendering ───────────────────────────────────────────
 
   private renderADRIndex(adrs: DocIR["adrs"]): string {
     const lines: string[] = [];
     lines.push("# Architecture Decision Records");
     lines.push("");
-    lines.push("[â† Back to Index](../README.md)");
+    lines.push("[← Back to Index](../README.md)");
     lines.push("");
     lines.push("| ID | Title | Status | Date |");
     lines.push("|----|-------|--------|------|");
     for (const adr of adrs) {
-      const statusEmoji = { accepted: "âœ…", proposed: "ðŸ“‹", deprecated: "âš ï¸", superseded: "ðŸ”„", rejected: "âŒ" }[adr.status] || "";
+      const statusEmoji = { accepted: "✅", proposed: "📋", deprecated: "⚠️", superseded: "🔄", rejected: "❌" }[adr.status] || "";
       lines.push(`| [${adr.id}](./${adr.id}.md) | ${adr.title} | ${statusEmoji} ${adr.status} | ${adr.date} |`);
     }
     return lines.join("\n");
@@ -662,13 +662,13 @@ export class MarkdownRenderer implements RendererPlugin {
     ].filter((l) => l !== undefined).join("\n");
   }
 
-  // â”€â”€ Changelog Rendering â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Changelog Rendering ─────────────────────────────────────
 
   private renderChangelog(entries: DocIR["changelog"]): string {
     const lines: string[] = ["# Changelog", ""];
 
     for (const entry of entries) {
-      lines.push(`## [${entry.version}] â€” ${entry.date}`);
+      lines.push(`## [${entry.version}] — ${entry.date}`);
       lines.push("");
 
       const sections = [
@@ -695,7 +695,7 @@ export class MarkdownRenderer implements RendererPlugin {
     return lines.join("\n");
   }
 
-  // â”€â”€ Coverage Rendering â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Coverage Rendering ──────────────────────────────────────
 
   private renderCoverageReport(coverage: CoverageScore): string[] {
     const lines: string[] = [];
@@ -705,11 +705,11 @@ export class MarkdownRenderer implements RendererPlugin {
     lines.push("");
     lines.push("| Check | Status |");
     lines.push("|-------|--------|");
-    lines.push(`| Module description | ${b.description ? "âœ…" : "âŒ"} |`);
-    lines.push(`| Parameter docs | ${b.parameters >= 80 ? "âœ…" : b.parameters >= 50 ? "âš ï¸" : "âŒ"} ${b.parameters}% |`);
-    lines.push(`| Return type docs | ${b.returnType ? "âœ…" : "âŒ"} |`);
-    lines.push(`| Throws docs | ${b.throws >= 80 ? "âœ…" : b.throws >= 50 ? "âš ï¸" : "âŒ"} ${b.throws}% |`);
-    lines.push(`| Examples | ${b.examples ? "âœ…" : "âŒ"} |`);
+    lines.push(`| Module description | ${b.description ? "✅" : "❌"} |`);
+    lines.push(`| Parameter docs | ${b.parameters >= 80 ? "✅" : b.parameters >= 50 ? "⚠️" : "❌"} ${b.parameters}% |`);
+    lines.push(`| Return type docs | ${b.returnType ? "✅" : "❌"} |`);
+    lines.push(`| Throws docs | ${b.throws >= 80 ? "✅" : b.throws >= 50 ? "⚠️" : "❌"} ${b.throws}% |`);
+    lines.push(`| Examples | ${b.examples ? "✅" : "❌"} |`);
     lines.push("");
 
     if (coverage.undocumented.length > 0) {
@@ -724,7 +724,7 @@ export class MarkdownRenderer implements RendererPlugin {
     return lines;
   }
 
-  // â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Helpers ─────────────────────────────────────────────────
 
   private groupByLanguage(modules: ModuleNode[]): Map<string, ModuleNode[]> {
     const map = new Map<string, ModuleNode[]>();
@@ -768,7 +768,7 @@ export class MarkdownRenderer implements RendererPlugin {
   private coverageBar(score: number): string {
     const filled = Math.round(score / 10);
     const empty = 10 - filled;
-    return `${"â–ˆ".repeat(filled)}${"â–‘".repeat(empty)}`;
+    return `${"█".repeat(filled)}${"░".repeat(empty)}`;
   }
 }
 

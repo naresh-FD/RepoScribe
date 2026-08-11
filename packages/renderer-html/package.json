@@ -1,7 +1,7 @@
 {
-  "name": "@docgen/renderer-markdown",
+  "name": "@docgen/renderer-html",
   "version": "1.1.0",
-  "description": "Markdown renderer plugin for RepoScribe",
+  "description": "Static HTML renderer plugin for RepoScribe",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
@@ -13,8 +13,8 @@
     "@docgen/core": "workspace:*"
   },
   "devDependencies": {
-    "typescript": "^5.4.0",
     "@types/node": "^20.0.0",
+    "typescript": "^5.4.0",
     "vitest": "^1.6.0"
   }
 }

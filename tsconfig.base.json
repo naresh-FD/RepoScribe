@@ -18,6 +18,7 @@
       "@docgen/cli": ["packages/cli/dist"],
       "@docgen/parser-typescript": ["packages/parser-typescript/dist"],
       "@docgen/renderer-markdown": ["packages/renderer-markdown/dist"],
+      "@docgen/renderer-html": ["packages/renderer-html/dist"],
       "@docgen/renderer-pdf": ["packages/renderer-pdf/dist"]
     },
     "outDir": "./dist",

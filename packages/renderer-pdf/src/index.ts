@@ -95,7 +95,7 @@ interface FlowState {
 
 export class PdfRenderer implements RendererPlugin {
   readonly name = "@docgen/renderer-pdf";
-  readonly version = "1.0.0";
+  readonly version = "1.1.0";
   readonly type = "renderer" as const;
   readonly format = "pdf";
   readonly supports = ["pdf"];

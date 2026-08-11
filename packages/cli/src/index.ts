@@ -10,13 +10,13 @@ import { diffCommand } from "./commands/diff";
 const program = new Command();
 
 program
-  .name("docgen")
+  .name("reposcribe-cli")
   .description("Documentation generator for React and Java Spring Boot projects")
-  .version("1.0.0");
+  .version("1.1.0");
 
 program
   .command("init")
-  .description("Initialize DocGen in the current project")
+  .description("Initialize RepoScribe in the current project")
   .option("--force", "Overwrite existing .docgen.yaml", false)
   .action(initCommand);
 

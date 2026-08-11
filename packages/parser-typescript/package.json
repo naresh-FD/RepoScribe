@@ -1,12 +1,12 @@
 {
   "name": "@docgen/parser-typescript",
-  "version": "1.0.0",
-  "description": "TypeScript/TSX parser plugin for DocGen",
+  "version": "1.1.0",
+  "description": "TypeScript/TSX parser plugin for RepoScribe",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
     "build": "tsc",
-    "test": "vitest run",
+    "test": "vitest run --testTimeout 10000",
     "clean": "rm -rf dist"
   },
   "dependencies": {

@@ -1,6 +1,6 @@
 {
-  "name": "docgen",
-  "version": "1.0.0",
+  "name": "reposcribe",
+  "version": "1.1.0",
   "private": true,
   "description": "Documentation generator focused on React and Java Spring Boot projects",
   "bin": {
@@ -24,6 +24,7 @@
   "scripts": {
     "build": "turbo run build",
     "test": "turbo run test",
+    "test:e2e": "node scripts/e2e-smoke.mjs",
     "lint": "turbo run lint",
     "clean": "turbo run clean",
     "docs:generate": "node scripts/generate-docs.mjs",

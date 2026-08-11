@@ -172,9 +172,9 @@
 
 | # | Gap | Severity | Notes |
 |---|-----|----------|-------|
-| 1 | `diffCommand` is a stub (17 lines) | Low | Documented as Phase 2 placeholder — accurate to code |
+| 1 | Historical line counts and source inventory are stale | Low | The implementation now includes production API diffing, tests, watch mode, and an HTML renderer |
 | 2 | `core/src/orchestrator.ts` private methods not line-by-line documented | Low | Covered in core-api.md at algorithm level; technical/core.md covers private methods |
-| 3 | No test file documentation | Info | No test files exist in repo yet |
+| 3 | Test suite reference is incomplete | Info | Package-level parser, renderer, core, and CLI tests now exist |
 | 4 | `renderer-markdown` private method line numbers not exact | Low | Method names and algorithms are accurate |
 
 ### No Critical Gaps

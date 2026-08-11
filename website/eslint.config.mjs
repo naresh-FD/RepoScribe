@@ -36,6 +36,12 @@ const eslintConfig = defineConfig([
       },
     },
   },
+  {
+    files: ["**/*.ts", "**/*.tsx"],
+    rules: {
+      "react/prop-types": "off",
+    },
+  },
 ]);
 
 export default eslintConfig;

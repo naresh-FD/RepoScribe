@@ -152,3 +152,14 @@ export function createConsoleLogger(verbose = false): Logger {
     success: (msg, ...args) => console.log(`  [ok]    ${msg}`, ...args),
   };
 }
+
+/** Logger for machine-readable commands where stdout must contain only data. */
+export function createSilentLogger(): Logger {
+  return {
+    debug() {},
+    info() {},
+    warn() {},
+    error() {},
+    success() {},
+  };
+}

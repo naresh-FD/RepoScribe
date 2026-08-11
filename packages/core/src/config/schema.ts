@@ -29,7 +29,7 @@ const MarkdownOutputSchema = z.object({
 
 const HtmlOutputSchema = z.object({
   enabled: z.boolean().default(false),
-  engine: z.enum(["docusaurus", "custom"]).default("docusaurus"),
+  engine: z.enum(["docusaurus", "custom"]).default("custom"),
   outputDir: z.string().default("docs-site"),
   theme: z.string().default("@docgen/theme-default"),
   sidebar: z.enum(["auto", "manual"]).default("auto"),
@@ -233,7 +233,7 @@ export function generateDefaultConfig(options: {
       },
       html: {
         enabled: false,
-        engine: "docusaurus",
+        engine: "custom",
         outputDir: "docs-site",
       },
       pdf: {

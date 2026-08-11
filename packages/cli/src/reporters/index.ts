@@ -18,7 +18,7 @@ export class GitHubActionsReporter implements Reporter {
   report(result: GenerateResult): void {
     // Output stats as step summary
     const summary = [
-      "## DocGen Report",
+      "## RepoScribe Report",
       "",
       `| Metric | Value |`,
       `|--------|-------|`,
@@ -35,9 +35,6 @@ export class GitHubActionsReporter implements Reporter {
       require("fs").appendFileSync(summaryFile, summary + "\n");
     }
 
-    // Output errors as annotations
-    // TODO: result.errors does not exist in GenerateResult, errors are handled during validation before generate.
-
     // Output warnings for low coverage modules
     for (const mod of result.docir.modules) {
       if (mod.coverage.overall < 50) {
@@ -47,9 +44,13 @@ export class GitHubActionsReporter implements Reporter {
       }
     }
 
-    // Set output
-    console.log(`::set-output name=coverage::${result.coverage.overall}`);
-    console.log(`::set-output name=modules::${result.docir.modules.length}`);
+    const outputFile = process.env.GITHUB_OUTPUT;
+    if (outputFile) {
+      require("fs").appendFileSync(
+        outputFile,
+        `coverage=${result.coverage.overall}\nmodules=${result.docir.modules.length}\n`
+      );
+    }
   }
 }
 

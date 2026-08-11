@@ -2,6 +2,7 @@ import {
   loadConfig,
   Orchestrator,
   createConsoleLogger,
+  createSilentLogger,
   type ValidateResult,
 } from "@docgen/core";
 
@@ -13,50 +14,55 @@ interface ValidateOptions {
 
 export async function validateCommand(options: ValidateOptions): Promise<void> {
   const workDir = process.cwd();
-  const logger = createConsoleLogger(options.verbose);
+  const logger = options.json ? createSilentLogger() : createConsoleLogger(options.verbose);
 
   try {
     const config = loadConfig(workDir);
-
-    // Override threshold if specified
     if (options.threshold !== undefined) {
       config.validation.coverage.threshold = options.threshold;
     }
 
-    const orchestrator = new Orchestrator({
-      config,
-      workDir,
-      logger,
-    });
-
-    const result = await orchestrator.validate();
-
+    const result = await new Orchestrator({ config, workDir, logger }).validate();
     if (options.json) {
-      console.log(JSON.stringify(result, null, 2));
+      console.log(
+        JSON.stringify(
+          {
+            ...result,
+            coverage: {
+              ...result.coverage,
+              enforced: config.validation.coverage.enforce,
+            },
+          },
+          null,
+          2
+        )
+      );
     } else {
       outputHumanValidation(result);
     }
 
-    // Exit with appropriate code
-    if (!result.coverage.passed || result.violations.some((v) => v.level === "error")) {
-      process.exit(1);
+    const hasErrors = result.violations.some((violation) => violation.level === "error");
+    if ((config.validation.coverage.enforce && !result.coverage.passed) || hasErrors) {
+      process.exitCode = 1;
     }
   } catch (err) {
-    logger.error((err as Error).message);
-    if (options.verbose) {
-      console.error(err);
+    const message = (err as Error).message;
+    if (options.json) {
+      console.log(JSON.stringify({ success: false, error: message }, null, 2));
+    } else {
+      logger.error(message);
+      if (options.verbose) console.error(err);
     }
-    process.exit(1);
+    process.exitCode = 1;
   }
 }
 
 function outputHumanValidation(result: ValidateResult): void {
-  console.log("\n╔══════════════════════════════════════╗");
-  console.log("║    DocGen - Validation Report        ║");
-  console.log("╚══════════════════════════════════════╝\n");
-
-  console.log(`  Coverage:    ${result.coverage.overall}% (threshold: ${result.coverage.threshold}%)`);
-  console.log(`  Status:      ${result.coverage.passed ? "✓ PASSED" : "✗ FAILED"}`);
+  console.log("\nRepoScribe - validation report\n");
+  console.log(
+    `  Coverage:    ${result.coverage.overall}% (threshold: ${result.coverage.threshold}%)`
+  );
+  console.log(`  Status:      ${result.coverage.passed ? "PASSED" : "FAILED"}`);
 
   if (result.coverage.undocumented.length > 0) {
     console.log(`\n  Undocumented (${result.coverage.undocumented.length}):`);
@@ -68,20 +74,20 @@ function outputHumanValidation(result: ValidateResult): void {
     }
   }
 
-  const errors = result.violations.filter((v) => v.level === "error");
-  const warnings = result.violations.filter((v) => v.level === "warn");
+  const errors = result.violations.filter((violation) => violation.level === "error");
+  const warnings = result.violations.filter((violation) => violation.level === "warn");
 
   if (errors.length > 0) {
     console.log(`\n  Errors (${errors.length}):`);
-    for (const v of errors.slice(0, 10)) {
-      console.log(`    ✗ [${v.rule}] ${v.message}`);
+    for (const violation of errors.slice(0, 10)) {
+      console.log(`    ERROR [${violation.rule}] ${violation.message}`);
     }
   }
 
   if (warnings.length > 0) {
     console.log(`\n  Warnings (${warnings.length}):`);
-    for (const v of warnings.slice(0, 10)) {
-      console.log(`    ⚠ [${v.rule}] ${v.message}`);
+    for (const violation of warnings.slice(0, 10)) {
+      console.log(`    WARN [${violation.rule}] ${violation.message}`);
     }
   }
 

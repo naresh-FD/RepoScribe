@@ -1,7 +1,7 @@
 {
   "name": "@docgen/core",
-  "version": "1.0.0",
-  "description": "Core engine for DocGen - DocIR types, plugin system, and orchestrator",
+  "version": "1.1.0",
+  "description": "RepoScribe core engine - DocIR types, plugin system, and orchestrator",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {

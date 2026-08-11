@@ -36,8 +36,16 @@ const quickLinks = [
     icon: GitBranch,
     label: "Architecture",
     title: "Follow the pipeline",
-    text: "See how source becomes DocIR, transforms, Markdown, and PDF.",
+    text: "See how source becomes DocIR, transforms, Markdown, HTML, and PDF.",
     accent: "blue",
+  },
+  {
+    href: "/docs/roadmap",
+    icon: GitBranch,
+    label: "Roadmap",
+    title: "Track the next phases",
+    text: "See what shipped in v1.1 and what comes next for output, releases, and languages.",
+    accent: "mint",
   },
 ];
 
@@ -68,7 +76,7 @@ export default function Home() {
             <div className="hero-meta">
               <span><Check size={15} aria-hidden="true" /> React + TypeScript</span>
               <span><Check size={15} aria-hidden="true" /> Java + Spring Boot</span>
-              <span><Check size={15} aria-hidden="true" /> Markdown + PDF</span>
+              <span><Check size={15} aria-hidden="true" /> Markdown + HTML + PDF</span>
             </div>
           </div>
 
@@ -79,7 +87,7 @@ export default function Home() {
               <TerminalSquare size={15} aria-hidden="true" />
             </div>
             <div className="terminal-body">
-              <p><span className="prompt">$</span> reposcribe-cli generate <b>--format</b> markdown pdf</p>
+              <p><span className="prompt">$</span> reposcribe-cli generate <b>--format</b> markdown html pdf</p>
               <div className="terminal-progress">
                 <span><Check size={14} /> Parsed 22 source files</span>
                 <span><Check size={14} /> Built DocIR graph</span>
@@ -91,10 +99,11 @@ export default function Home() {
                 <span>├── architecture.md</span>
                 <span>├── features/</span>
                 <span>├── api/services.md</span>
+                <span>├── html/<em>index.html</em></span>
                 <span>└── pdf/<em>developer-guide.pdf</em></span>
               </div>
               <div className="terminal-done">
-                <Sparkles size={15} aria-hidden="true" /> 12 docs generated in 1.8s
+                <Sparkles size={15} aria-hidden="true" /> 13 docs generated in 1.8s
               </div>
             </div>
           </div>
@@ -102,8 +111,8 @@ export default function Home() {
 
         <section className="signal-strip" aria-label="RepoScribe capabilities">
           <div><strong>02</strong><span>language ecosystems</span></div>
-          <div><strong>06</strong><span>composable packages</span></div>
-          <div><strong>02</strong><span>output formats</span></div>
+          <div><strong>07</strong><span>composable packages</span></div>
+          <div><strong>03</strong><span>output formats</span></div>
           <div><strong>01</strong><span>shared DocIR</span></div>
         </section>
 
@@ -161,7 +170,7 @@ export default function Home() {
               <span className="step-number">03</span>
               <span className="step-icon"><FileText size={21} /></span>
               <h3>Publish</h3>
-              <p>Renderers produce a navigable Markdown set and one combined PDF.</p>
+              <p>Renderers produce navigable Markdown, a searchable HTML site, and one combined PDF.</p>
             </div>
           </div>
         </section>

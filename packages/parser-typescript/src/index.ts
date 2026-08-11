@@ -11,7 +11,7 @@
  */
 
 import * as path from "path";
-import fg from "fast-glob";
+import * as fs from "fs";
 import {
   Project,
   SourceFile,
@@ -66,15 +66,20 @@ import {
 
 export class TypeScriptParser implements ParserPlugin {
   readonly name = "@docgen/parser-typescript";
-  readonly version = "1.0.0";
+  readonly version = "1.1.0";
   readonly type = "parser" as const;
   readonly language = "typescript" as const;
   readonly supports = ["typescript", "tsx", "ts"];
 
   private project: Project | null = null;
+  private workDir = process.cwd();
+  private moduleCache = new Map<
+    string,
+    { mtimeMs: number; size: number; modules: ModuleNode[] }
+  >();
 
-  async initialize(_config: PluginConfig): Promise<void> {
-    // Project is created per-parse call with the right tsconfig
+  async initialize(config: PluginConfig): Promise<void> {
+    this.workDir = config.workDir;
   }
 
   async validate(): Promise<PluginValidationResult> {
@@ -86,14 +91,16 @@ export class TypeScriptParser implements ParserPlugin {
   }
 
   async parse(files: string[], langConfig: any): Promise<DocIR> {
-    const startTime = Date.now();
     const modules: ModuleNode[] = [];
 
-    // Create ts-morph project
-    const tsConfigPath = this.findTsConfig(process.cwd()); // Will use correct workDir conceptually
+    const configuredTsConfig = langConfig.options?.tsconfig as string | undefined;
+    const tsConfigPath = configuredTsConfig
+      ? path.resolve(this.workDir, configuredTsConfig)
+      : this.findTsConfig(this.workDir);
     this.project = new Project({
       tsConfigFilePath: tsConfigPath || undefined,
       skipAddingFilesFromTsConfig: true,
+      skipFileDependencyResolution: true,
       compilerOptions: tsConfigPath
         ? undefined
         : { strict: true, target: 99, module: 99 },
@@ -106,11 +113,29 @@ export class TypeScriptParser implements ParserPlugin {
 
     // Parse each file
     const sourceFiles = this.project.getSourceFiles();
+    const currentFiles = new Set<string>(
+      sourceFiles.map((sourceFile) => sourceFile.getFilePath() as string)
+    );
+    for (const cachedFile of this.moduleCache.keys()) {
+      if (!currentFiles.has(cachedFile)) this.moduleCache.delete(cachedFile);
+    }
+
     for (const sourceFile of sourceFiles) {
       try {
-        // Here we assume the source root can be passed statically, 
-        // normally we would resolve the best common prefix
-        const fileModules = this.parseSourceFile(sourceFile, process.cwd());
+        const filePath = sourceFile.getFilePath();
+        const stats = fs.statSync(filePath);
+        const cached = this.moduleCache.get(filePath);
+        if (cached && cached.mtimeMs === stats.mtimeMs && cached.size === stats.size) {
+          modules.push(...structuredClone(cached.modules));
+          continue;
+        }
+
+        const fileModules = this.parseSourceFile(sourceFile, this.workDir);
+        this.moduleCache.set(filePath, {
+          mtimeMs: stats.mtimeMs,
+          size: stats.size,
+          modules: structuredClone(fileModules),
+        });
         modules.push(...fileModules);
       } catch (err: any) {
         console.error(`Failed to parse ${sourceFile.getFilePath()}: ${err.message}`);
@@ -118,9 +143,9 @@ export class TypeScriptParser implements ParserPlugin {
     }
 
     const docir = createEmptyDocIR({
-        name: "unnamed",
-        version: "0.0.0",
-        languages: ["typescript"]
+      name: "unnamed",
+      version: "0.0.0",
+      languages: ["typescript"],
     });
     docir.modules = modules;
     return docir;
@@ -162,17 +187,11 @@ export class TypeScriptParser implements ParserPlugin {
       }
     }
 
-    for (const declarations of sourceFile.getExportedDeclarations().values()) {
-      for (const declaration of declarations) {
-        if (!Node.isVariableDeclaration(declaration)) {
-          continue;
-        }
-
-        const module = this.parseExportedVariable(declaration, filePath);
-        if (module) {
-          modules.push(module);
-        }
-      }
+    for (const declaration of sourceFile.getVariableDeclarations()) {
+      const statement = declaration.getVariableStatement();
+      if (!statement?.isExported()) continue;
+      const module = this.parseExportedVariable(declaration, filePath);
+      if (module) modules.push(module);
     }
 
     if (modules.length === 0 && this.isReExportOnlyFile(sourceFile)) {
@@ -1417,7 +1436,7 @@ export class TypeScriptParser implements ParserPlugin {
       for (const name of candidates) {
         const candidate = path.join(dir, name);
         try {
-          require("fs").accessSync(candidate);
+          fs.accessSync(candidate);
           return candidate;
         } catch {}
       }

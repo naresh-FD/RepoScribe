@@ -13,6 +13,7 @@ const slugs = [
   "cli-reference",
   "plugin-development",
   "ci-cd",
+  "roadmap",
   "troubleshooting",
 ];
 

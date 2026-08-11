@@ -4,6 +4,7 @@ dist/
 .turbo/
 .pnpm-store/
 .tmp/
+fixtures/**/generated/
 .docgen-snapshot.json
 
 # Output directories
