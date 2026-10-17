@@ -115,10 +115,23 @@ const WATCH_DEBOUNCE_MS = 200;
 
 /** Injection points so the watch loop can be tested without real file watchers or real time. */
 export interface WatchDependencies {
+  /** File watcher to use instead of `fs.watch`. */
   watch?: typeof fs.watch;
+  /** Quiet period in milliseconds after the last change before regenerating. */
   debounceMs?: number;
 }
 
+/**
+ * Watch every configured source root and regenerate after changes settle.
+ * Changes that arrive during a generation are coalesced into one follow-up run.
+ *
+ * @param config - Loaded RepoScribe configuration; its language source roots are watched.
+ * @param workDir - Project directory that the source roots are resolved against.
+ * @param logger - Receives progress and generation errors.
+ * @param generate - Runs one generation; a rejection is logged and watching continues.
+ * @param dependencies - Optional watcher and debounce overrides, used by tests.
+ * @returns A promise that never resolves and rejects if a watcher reports an error.
+ */
 export async function watchAndRegenerate(
   config: any,
   workDir: string,
