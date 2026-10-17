@@ -1,17 +1,26 @@
 import * as path from "node:path";
+import { DocGenConfigSchema, createSilentLogger, type PluginConfig } from "@docgen/core";
 import { describe, expect, it } from "vitest";
 import { JavaParser } from "./index";
+
+/** A real, schema-validated config and a silent logger, so the tests need no type casts. */
+function pluginConfig(workDir: string): PluginConfig {
+  return {
+    projectConfig: DocGenConfigSchema.parse({
+      project: { name: "Demo" },
+      languages: [{ name: "java", source: "src", parser: "@docgen/parser-java" }],
+    }),
+    workDir,
+    options: {},
+    logger: createSilentLogger(),
+  };
+}
 
 describe("JavaParser", () => {
   it("parses plain Java types and Spring REST endpoint metadata", async () => {
     const fixtureRoot = path.join(process.cwd(), "src", "__fixtures__");
     const parser = new JavaParser();
-    await parser.initialize({
-      projectConfig: {} as any,
-      workDir: fixtureRoot,
-      options: {},
-      logger: console as any,
-    });
+    await parser.initialize(pluginConfig(fixtureRoot));
 
     const docir = await parser.parse(
       [
@@ -98,12 +107,7 @@ describe("JavaParser", () => {
   it("attaches Javadoc @param text to each parameter (AUDIT-001 / RS-05)", async () => {
     const fixtureRoot = path.join(process.cwd(), "src", "__fixtures__");
     const parser = new JavaParser();
-    await parser.initialize({
-      projectConfig: {} as any,
-      workDir: fixtureRoot,
-      options: {},
-      logger: console as any,
-    });
+    await parser.initialize(pluginConfig(fixtureRoot));
 
     const docir = await parser.parse([path.join(fixtureRoot, "DocumentedService.java")], {});
     const service = docir.modules.find((module) => module.name === "DocumentedService");
@@ -124,12 +128,7 @@ describe("JavaParser", () => {
   it("reports a varargs parameter under its own name and as an array of its element type", async () => {
     const fixtureRoot = path.join(process.cwd(), "src", "__fixtures__");
     const parser = new JavaParser();
-    await parser.initialize({
-      projectConfig: {} as any,
-      workDir: fixtureRoot,
-      options: {},
-      logger: console as any,
-    });
+    await parser.initialize(pluginConfig(fixtureRoot));
 
     const docir = await parser.parse([path.join(fixtureRoot, "DocumentedService.java")], {});
     const join = docir.modules[0]?.members.find((member) => member.name === "join");
@@ -145,12 +144,7 @@ describe("JavaParser", () => {
   it("keeps the @param tags on the member as well", async () => {
     const fixtureRoot = path.join(process.cwd(), "src", "__fixtures__");
     const parser = new JavaParser();
-    await parser.initialize({
-      projectConfig: {} as any,
-      workDir: fixtureRoot,
-      options: {},
-      logger: console as any,
-    });
+    await parser.initialize(pluginConfig(fixtureRoot));
 
     const docir = await parser.parse([path.join(fixtureRoot, "DocumentedService.java")], {});
     const add = docir.modules[0]?.members.find((member) => member.name === "add");
