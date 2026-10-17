@@ -126,6 +126,71 @@ describe("adrCommand", () => {
     });
   });
 
-  // Known gap found by the audit. `todo` keeps it visible without a red run.
-  it.todo("numbers a new ADR after the highest existing number, not after the file count (ADR-001 and ADR-003 present creates a second ADR-003)");
+  // The audit found that numbering used the file count, so gaps produced duplicate numbers.
+  describe("numbering with gaps and other files", () => {
+    const seed = (...names: string[]) => {
+      fs.mkdirSync(decisions(), { recursive: true });
+      for (const name of names) fs.writeFileSync(path.join(decisions(), name), `# ${name}\n`);
+    };
+
+    it("numbers after the highest existing number, not after the file count", async () => {
+      seed("ADR-001-first.md", "ADR-003-third.md");
+
+      await adrCommand("new", "Fourth", { status: "proposed" });
+
+      expect(fs.readdirSync(decisions()).sort()).toEqual([
+        "ADR-001-first.md",
+        "ADR-003-third.md",
+        "ADR-004-fourth.md",
+      ]);
+    });
+
+    it("does not reuse a number after an earlier ADR was deleted", async () => {
+      await adrCommand("new", "One", { status: "proposed" });
+      await adrCommand("new", "Two", { status: "proposed" });
+      fs.rmSync(path.join(decisions(), fs.readdirSync(decisions()).sort()[0]));
+
+      await adrCommand("new", "Three", { status: "proposed" });
+
+      expect(fs.readdirSync(decisions()).sort()).toEqual([
+        expect.stringMatching(/^ADR-002-two/),
+        expect.stringMatching(/^ADR-003-three/),
+      ]);
+    });
+
+    it("keeps counting past three digits instead of truncating or repeating", async () => {
+      seed("ADR-999-nine-nine-nine.md", "ADR-1000-one-thousand.md");
+
+      await adrCommand("new", "Next", { status: "proposed" });
+
+      expect(fs.readdirSync(decisions())).toContain("ADR-1001-next.md");
+    });
+
+    it("ignores files that are not numbered ADRs when choosing the number", async () => {
+      seed("README.md", "ADR-template.md", "notes-2024.md", "ADR-002-real.md");
+
+      await adrCommand("new", "After real", { status: "proposed" });
+
+      expect(fs.readdirSync(decisions())).toContain("ADR-003-after-real.md");
+      expect(fs.readdirSync(decisions())).toHaveLength(5);
+    });
+
+    it("starts at ADR-001 when the folder holds no numbered ADRs", async () => {
+      seed("README.md");
+
+      await adrCommand("new", "First", { status: "proposed" });
+
+      expect(fs.readdirSync(decisions())).toContain("ADR-001-first.md");
+    });
+
+    it("never overwrites an existing file", async () => {
+      seed("ADR-001-first.md");
+      const before = fs.readFileSync(path.join(decisions(), "ADR-001-first.md"), "utf-8");
+
+      await adrCommand("new", "First", { status: "proposed" });
+
+      expect(fs.readFileSync(path.join(decisions(), "ADR-001-first.md"), "utf-8")).toBe(before);
+      expect(fs.readdirSync(decisions())).toContain("ADR-002-first.md");
+    });
+  });
 });

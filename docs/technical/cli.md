@@ -54,7 +54,7 @@ src/
     generate.ts         # Documentation generation and watch mode
     validate.ts         # Coverage validation with JSON output
     diff.ts             # DocIR diff against a Git ref and breaking-change gate
-    adr.ts              # Architecture Decision Records (114 lines)
+    adr.ts              # Architecture Decision Records (124 lines)
   reporters/
     index.ts            # CI output formatters (82 lines)
 ```
@@ -433,7 +433,7 @@ Comparing documentation against HEAD~1...
 
 ### 4.5 `docgen adr <action> [title]`
 
-**Source:** `src/commands/adr.ts` (114 lines)
+**Source:** `src/commands/adr.ts` (124 lines)
 
 **Signature:**
 
@@ -474,7 +474,7 @@ Creates a new Architecture Decision Record file.
 
 **Validation:** If `title` is not provided, prints an error and exits with code 1.
 
-**ID Assignment:** Reads all files in the ADR directory matching the pattern `/^ADR-\d+/`, counts them, and assigns the next sequential number. IDs are zero-padded to three digits: `ADR-001`, `ADR-002`, etc.
+**ID Assignment:** Reads the names of the files in the ADR directory that match `/^ADR-(\d+)/` and assigns one more than the highest number found (`nextAdrNumber()`), so a gap or a deleted ADR never causes a number to be reused. Files that are not numbered ADRs, such as a `README.md` or `ADR-template.md`, are ignored. With none, the first ADR is `ADR-001`. IDs are zero-padded to three digits (`ADR-001`, `ADR-002`, ...) and grow past that without truncation (`ADR-1000`).
 
 **File Naming:** The file name is constructed as:
 
