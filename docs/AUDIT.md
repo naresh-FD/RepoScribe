@@ -176,6 +176,7 @@
 | 2 | `core/src/orchestrator.ts` private methods not line-by-line documented | Low | Covered in core-api.md at algorithm level; technical/core.md covers private methods |
 | 3 | Test suite reference is incomplete | Info | Package-level parser, renderer, core, and CLI tests now exist |
 | 4 | `renderer-markdown` private method line numbers not exact | Low | Method names and algorithms are accurate |
+| 5 | `parser-java`, `renderer-html` and `renderer-pdf` are not in the file-level tables above | Low | Technical references now exist for them ([parser-java](technical/parser-java.md), [renderer-html](technical/renderer-html.md), [renderer-pdf](technical/renderer-pdf.md)). The inventory and coverage tables were not regenerated, so the 100% figure still describes only the original 22 source files <!-- conduit-change: CONDUIT-2026-001 --> |
 
 ### No Critical Gaps
 
