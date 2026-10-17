@@ -281,7 +281,7 @@ export class TypeScriptParser implements ParserPlugin {
         isAbstract: false,
         signature: method.getText(),
         description: this.extractDescription(method),
-        parameters: this.extractParameters(method.getParameters()),
+        parameters: this.extractParameters(method.getParameters(), method),
         returnType: this.buildTypeRef(method.getReturnType()),
         throws: [],
         deprecated: null,
@@ -440,7 +440,7 @@ export class TypeScriptParser implements ParserPlugin {
         isAbstract: false,
         signature: this.buildFunctionSignature(func),
         description: this.extractDescription(func),
-        parameters: this.extractParameters(func.getParameters()),
+        parameters: this.extractParameters(func.getParameters(), func),
         returnType: this.buildTypeRef(func.getReturnType()),
         throws: this.extractThrows(func),
         deprecated: null,
@@ -498,7 +498,7 @@ export class TypeScriptParser implements ParserPlugin {
         isAbstract: false,
         signature: this.buildVariableFunctionSignature(declaration, initializer),
         description: this.extractDescription(docNode),
-        parameters: this.extractParameters(initializer.getParameters()),
+        parameters: this.extractParameters(initializer.getParameters(), docNode),
         returnType: this.buildTypeRef(initializer.getReturnType()),
         throws: this.extractThrows(docNode),
         deprecated: this.extractDeprecation(docNode),
@@ -715,7 +715,7 @@ export class TypeScriptParser implements ParserPlugin {
       isAbstract: method.isAbstract(),
       signature: this.buildMethodSignature(method),
       description: this.extractDescription(method),
-      parameters: this.extractParameters(method.getParameters()),
+      parameters: this.extractParameters(method.getParameters(), method),
       returnType: this.buildTypeRef(method.getReturnType()),
       throws: this.extractThrows(method),
       deprecated: this.extractDeprecation(method),
@@ -761,7 +761,7 @@ export class TypeScriptParser implements ParserPlugin {
         .map((p) => p.getText())
         .join(", ")})`,
       description: this.extractDescription(ctor),
-      parameters: this.extractParameters(ctor.getParameters()),
+      parameters: this.extractParameters(ctor.getParameters(), ctor),
       returnType: null,
       throws: [],
       deprecated: null,
@@ -787,7 +787,8 @@ export class TypeScriptParser implements ParserPlugin {
       parameters:
         kind === "setter"
           ? this.extractParameters(
-              (accessor as SetAccessorDeclaration).getParameters()
+              (accessor as SetAccessorDeclaration).getParameters(),
+              accessor
             )
           : [],
       returnType:
@@ -904,32 +905,38 @@ export class TypeScriptParser implements ParserPlugin {
     return text.replace(/import\([^)]+\)\./g, "");
   }
 
-  private extractParameters(params: ParameterDeclaration[]): ParamNode[] {
+  /**
+   * Build parameter nodes for a callable.
+   * @param params - The declared parameters, in order.
+   * @param docNode - The node that carries the JSDoc block: the function itself, or the variable
+   *   statement for an arrow function assigned to a const.
+   */
+  private extractParameters(params: ParameterDeclaration[], docNode: Node): ParamNode[] {
     return params.map((p) => ({
       name: p.getName(),
       type: this.buildTypeRef(p.getType()),
-      description: this.getParamDescription(p),
+      description: this.getParamDescription(p, docNode),
       isOptional: p.isOptional(),
       isRest: p.isRestParameter(),
       defaultValue: p.getInitializer()?.getText(),
     }));
   }
 
-  private getParamDescription(param: ParameterDeclaration): string {
-    // Walk up to the function/method and find matching @param tag
-    const parent = param.getParent();
-    if (!parent) return "";
-
-    const tags = this.extractTags(parent);
-    const paramTag = tags.find(
-      (t) => t.tag === "param" && t.description.startsWith(param.getName())
-    );
-
-    if (paramTag) {
-      // Strip the param name from the value
-      return paramTag.description.replace(new RegExp(`^${param.getName()}\\s*-?\\s*`), "");
+  /**
+   * Find the `@param` text for one parameter. A tag's name is matched exactly (so `id` never picks up
+   * `idx`'s text), and the optional `{type}`, the name and a leading hyphen are not part of the text.
+   */
+  private getParamDescription(param: ParameterDeclaration, docNode: Node): string {
+    const name = param.getName();
+    for (const doc of this.getJsDocs(docNode)) {
+      for (const tag of doc.getTags()) {
+        if (!Node.isJSDocParameterTag(tag) || tag.getName() !== name) continue;
+        return (tag.getCommentText() ?? "")
+          .replace(/^\s*-\s*/, "")
+          .replace(/\s*\n\s*/g, " ")
+          .trim();
+      }
     }
-
     return "";
   }
 
