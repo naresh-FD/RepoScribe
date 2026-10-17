@@ -1816,6 +1816,8 @@ All configuration is defined in `.docgen.yaml` (or `.docgen.yml` or `docgen.conf
 
 #### `output.confluence`
 
+> **Not implemented.** The settings below are accepted so existing configuration files still load, but RepoScribe has no Confluence renderer. Setting `enabled: true` makes plugin loading fail with a clear error.
+
 | Option            | Type       | Default                | Description                            |
 | ----------------- | ---------- | ---------------------- | -------------------------------------- |
 | `enabled`         | `boolean`  | `false`                | Enable Confluence output               |
@@ -2277,7 +2279,7 @@ The `Orchestrator.loadAllPlugins()` method additionally:
   - `markdown` -> `@docgen/renderer-markdown`
   - `html` -> `@docgen/renderer-html`
   - `pdf` -> `@docgen/renderer-pdf`
-  - `confluence` -> `@docgen/renderer-confluence`
+  - `confluence` -> not available: there is no Confluence renderer, so `loadAllPlugins()` throws "Confluence output is not available: RepoScribe has no Confluence renderer." instead of trying to load a package
 - After loading external plugins, instantiates and registers the built-in `CoverageAnalyzer` and `LinkResolver` transformers
 - Sorts all transformers by priority (ascending)
 - Caches the `PluginRegistry` so subsequent calls return the same instance

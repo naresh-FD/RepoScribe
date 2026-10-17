@@ -142,7 +142,7 @@ Other member fields:
 - `visibility`: `private`, `protected` or `public` from the modifiers; anything else (package-private, or an interface method with no modifier) is `internal`.
 - `isStatic` and `isAbstract` come from the modifier text; `isAsync` is always `false`.
 - `signature` for methods and constructors is the text up to the body.
-- `parameters`: `name`, `type`, `isRest` (true for varargs); `isOptional` is always `false`.
+- `parameters`: `name`, `type`, `description`, `isRest` (true for varargs); `isOptional` is always `false`. `description` is the text of the matching `@param` tag in the Javadoc of the method or constructor, or an empty string. A varargs parameter (`String... parts`) is reported under its own name with the array type of its element (`String[]`). A `@param` tag that names no real parameter is ignored there but stays in the member's `tags`. Covered by `src/index.test.ts`.
 - `deprecated`: set only from a Javadoc `@deprecated` tag. The `@Deprecated` annotation does not set it.
 
 ### Javadoc handling
@@ -217,7 +217,7 @@ Example, taken from the package test (`UserController.getUser`):
 - `DecoratorNode.arguments` is always `{}`; only the raw annotation text is kept.
 - Interface `extends` lists are not recorded as `implements` (the parser reads the grammar's `interfaces` field only).
 - `isNullable` and `isUnion` on type references are always `false`; arrays are recognised only by a trailing `[]`.
-- **Parameter descriptions are always empty.** The description lookup reads a Javadoc comment before the parameter list rather than before the method, so no comment is found. `@param` text is still available in the member's `tags`. No test covers this.
+- *Fixed by AUDIT-001 (RS-05):* parameter descriptions used to be empty because the lookup read a comment before the parameter list instead of before the method, and a varargs parameter was reported as `arg` with type `Object`. Both are now tested.
 
 ---
 

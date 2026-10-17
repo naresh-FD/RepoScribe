@@ -244,20 +244,44 @@ export class JavaParser implements ParserPlugin {
 
   private parseParameters(parametersNode: SyntaxNode | null): ParamNode[] {
     if (!parametersNode) return [];
+    // @param tags are in the Javadoc of the method or constructor that owns the parameter list.
+    const owner = parametersNode.parent;
+    const docs = owner ? this.javadoc(owner) : null;
     return parametersNode.namedChildren
       .filter((node) => node.type === "formal_parameter" || node.type === "spread_parameter")
       .map((node) => {
-        const name = node.childForFieldName("name")?.text ?? "arg";
-        const docs = this.javadoc(node.parent ?? node);
+        const { name, typeText } = this.parameterNameAndType(node);
         return {
           name,
-          type: this.typeRef(node.childForFieldName("type")?.text ?? "Object"),
+          type: this.typeRef(typeText),
           description:
-            docs.tags.find((tag) => tag.tag === "param" && tag.name === name)?.description ?? "",
+            docs?.tags.find((tag) => tag.tag === "param" && tag.name === name)?.description ?? "",
           isOptional: false,
           isRest: node.type === "spread_parameter",
         };
       });
+  }
+
+  /**
+   * A `formal_parameter` exposes `name` and `type` fields. A varargs `spread_parameter` does not: its
+   * name is inside a `variable_declarator` child and its type is the first other named child. A varargs
+   * parameter is an array of that type.
+   */
+  private parameterNameAndType(node: SyntaxNode): { name: string; typeText: string } {
+    if (node.type !== "spread_parameter") {
+      return {
+        name: node.childForFieldName("name")?.text ?? "arg",
+        typeText: node.childForFieldName("type")?.text ?? "Object",
+      };
+    }
+    const declarator = node.namedChildren.find((child) => child.type === "variable_declarator");
+    const elementType = node.namedChildren.find(
+      (child) => child.type !== "modifiers" && child.type !== "variable_declarator"
+    );
+    return {
+      name: declarator?.childForFieldName("name")?.text ?? "arg",
+      typeText: elementType ? `${elementType.text}[]` : "Object",
+    };
   }
 
   private extractEndpoint(

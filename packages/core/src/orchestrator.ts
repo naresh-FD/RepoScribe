@@ -18,6 +18,14 @@ import { LinkResolver } from "./transforms/link-resolver";
 // Orchestrator - Coordinates the full parse → transform → render pipeline
 // ─────────────────────────────────────────────────────────────────
 
+/**
+ * Output formats the configuration schema accepts but no package renders. Enabling one is an error:
+ * the plugin loader would otherwise tell the user to install a package that does not exist.
+ */
+const UNAVAILABLE_OUTPUTS: Record<string, string> = {
+  confluence: "Confluence output is not available: RepoScribe has no Confluence renderer.",
+};
+
 export interface OrchestratorOptions {
   config: DocGenConfig;
   workDir: string;
@@ -157,6 +165,16 @@ export class Orchestrator {
   private async loadAllPlugins(): Promise<PluginRegistry> {
     if (this.registry) return this.registry;
 
+    // Fail early and clearly for outputs the config accepts but nothing implements.
+    for (const [format, message] of Object.entries(UNAVAILABLE_OUTPUTS)) {
+      const outputConfig = this.config.output[format as keyof typeof this.config.output];
+      if (outputConfig && "enabled" in outputConfig && outputConfig.enabled) {
+        throw new Error(
+          `${message} Set output.${format}.enabled to false, or generate markdown, html or pdf.`
+        );
+      }
+    }
+
     // Collect all plugin names from config
     const pluginNames = new Set<string>();
 
@@ -175,7 +193,6 @@ export class Orchestrator {
       markdown: "@docgen/renderer-markdown",
       html: "@docgen/renderer-html",
       pdf: "@docgen/renderer-pdf",
-      confluence: "@docgen/renderer-confluence",
     };
 
     for (const [format, pkg] of Object.entries(outputMap)) {

@@ -54,7 +54,7 @@ src/
     generate.ts         # Documentation generation and watch mode
     validate.ts         # Coverage validation with JSON output
     diff.ts             # DocIR diff against a Git ref and breaking-change gate
-    adr.ts              # Architecture Decision Records (114 lines)
+    adr.ts              # Architecture Decision Records (124 lines)
   reporters/
     index.ts            # CI output formatters (82 lines)
 ```
@@ -210,11 +210,23 @@ async function generateCommand(options: GenerateOptions): Promise<void>
 
 | Flag                    | Type     | Default | Description                                        |
 |-------------------------|----------|---------|----------------------------------------------------|
-| `-f, --format <formats...>` | string[] | (all enabled) | Output format(s): `markdown`, `html`, `pdf`, `confluence` |
+| `-f, --format <formats...>` | string[] | (all enabled) | Output format(s): `markdown`, `html`, `pdf`. `confluence` is accepted in the configuration but has no renderer and is rejected with a clear error |
 | `-o, --output <dir>`   | string   | (from config) | Override output directory                       |
 | `--json`                | boolean  | `false` | Output result as JSON (for CI pipelines)            |
 | `-v, --verbose`         | boolean  | `false` | Enable verbose logging                              |
 | `-w, --watch`           | boolean  | `false` | Watch for changes and regenerate                    |
+
+#### Watch mode
+
+`--watch` generates once, then watches every configured language source root recursively
+(`fs.watch`). Behaviour, covered by `src/commands/generate.watch.test.ts` and checked against the real
+command:
+
+- A change starts a 200 ms timer; further changes restart it, so a burst of saves causes one regeneration.
+- Only one generation runs at a time. A change that arrives while one is running is queued and runs after it.
+- A failed generation is logged and watching continues.
+- A watcher error ends the command with that error.
+- `--watch` cannot be combined with `--json`.
 
 #### Pipeline
 
@@ -421,7 +433,7 @@ Comparing documentation against HEAD~1...
 
 ### 4.5 `docgen adr <action> [title]`
 
-**Source:** `src/commands/adr.ts` (114 lines)
+**Source:** `src/commands/adr.ts` (124 lines)
 
 **Signature:**
 
@@ -462,7 +474,7 @@ Creates a new Architecture Decision Record file.
 
 **Validation:** If `title` is not provided, prints an error and exits with code 1.
 
-**ID Assignment:** Reads all files in the ADR directory matching the pattern `/^ADR-\d+/`, counts them, and assigns the next sequential number. IDs are zero-padded to three digits: `ADR-001`, `ADR-002`, etc.
+**ID Assignment:** Reads the names of the files in the ADR directory that match `/^ADR-(\d+)/` and assigns one more than the highest number found (`nextAdrNumber()`), so a gap or a deleted ADR never causes a number to be reused. Files that are not numbered ADRs, such as a `README.md` or `ADR-template.md`, are ignored. With none, the first ADR is `ADR-001`. IDs are zero-padded to three digits (`ADR-001`, `ADR-002`, ...) and grow past that without truncation (`ADR-1000`).
 
 **File Naming:** The file name is constructed as:
 

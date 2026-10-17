@@ -158,6 +158,20 @@ matched by `input.include` / `input.exclude` globs rooted at
 
 ---
 
+### Module cache
+
+One `TypeScriptParser` instance keeps the modules it extracted for each file, so a later `parse` call (watch
+mode reuses one instance) skips files that have not changed. Covered by `src/cache.test.ts`.
+
+- A file is served from the cache when its modification time **and** size are both unchanged. A change to
+  either one parses the file again.
+- Files that are no longer in the list passed to `parse` are dropped from the cache.
+- Callers receive copies of the cached modules, so changing a result does not change the cache.
+- The check does not read file contents: an edit that keeps both the size and the modification time is not
+  noticed.
+
+---
+
 ### File-Level Parsing
 
 #### `parseSourceFile(sourceFile: SourceFile, sourceRoot: string): ModuleNode[]`
@@ -656,16 +670,18 @@ text.replace(/import\([^)]+\)\./g, "")
 
 ---
 
-#### `extractParameters(params: ParameterDeclaration[]): ParamNode[]`
+#### `extractParameters(params: ParameterDeclaration[], docNode: Node): ParamNode[]`
 
 Maps an array of ts-morph `ParameterDeclaration` nodes to DocIR `ParamNode`
-objects.
+objects. `docNode` is the node that carries the JSDoc block: the function,
+method, constructor or accessor itself, or the variable statement for an arrow
+function assigned to a `const`.
 
 ```typescript
 {
   name: p.getName(),
   type: this.buildTypeRef(p.getType()),
-  description: this.getParamDescription(p),
+  description: this.getParamDescription(p, docNode),
   isOptional: p.isOptional(),
   isRest: p.isRestParameter(),
   defaultValue: p.getInitializer()?.getText(),
@@ -674,17 +690,18 @@ objects.
 
 ---
 
-#### `getParamDescription(param: ParameterDeclaration): string`
+#### `getParamDescription(param: ParameterDeclaration, docNode: Node): string`
 
-Walks up to the parameter's parent function/method, extracts all `@param`
-tags, and finds the one whose `value` starts with the parameter name. Then
-strips the parameter name and any leading `- ` separator from the value.
+Looks through the JSDoc blocks on `docNode` for the `@param` tag whose name is
+exactly the parameter's name (so `id` never picks up the text written for
+`idx`). The text is the tag's comment: the optional `{type}`, the name and a
+leading `-` are not part of it, and line breaks inside a multi-line description
+become single spaces.
 
-```typescript
-paramTag.value.replace(new RegExp(`^${param.getName()}\\s*-?\\s*`), "")
-```
-
-Returns `""` if no matching `@param` tag is found.
+Returns `""` if no matching `@param` tag exists. Both `@param a - text` and
+`@param a text` are accepted. Before this was corrected, `@param` text never
+reached `ParamNode.description`, so documented parameters were reported as
+undocumented by `docgen validate`.
 
 ---
 

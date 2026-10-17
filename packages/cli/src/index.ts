@@ -23,7 +23,7 @@ program
 program
   .command("generate")
   .description("Generate documentation from source code")
-  .option("-f, --format <formats...>", "Output format(s): markdown, html, pdf, confluence")
+  .option("-f, --format <formats...>", "Output format(s): markdown, html, pdf")
   .option("-o, --output <dir>", "Override output directory")
   .option("--mode <mode>", "Documentation mode: developer or exhaustive")
   .option("--json", "Output result as JSON (for CI pipelines)")
@@ -50,7 +50,7 @@ program
 program
   .command("adr")
   .description("Manage Architecture Decision Records")
-  .argument("<action>", "Action: new, list, update")
+  .argument("<action>", "Action: new, list")
   .argument("[title]", "ADR title (for 'new' action)")
   .option("-s, --status <status>", "ADR status", "proposed")
   .action(adrCommand);
