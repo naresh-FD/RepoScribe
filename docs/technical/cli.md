@@ -216,6 +216,18 @@ async function generateCommand(options: GenerateOptions): Promise<void>
 | `-v, --verbose`         | boolean  | `false` | Enable verbose logging                              |
 | `-w, --watch`           | boolean  | `false` | Watch for changes and regenerate                    |
 
+#### Watch mode
+
+`--watch` generates once, then watches every configured language source root recursively
+(`fs.watch`). Behaviour, covered by `src/commands/generate.watch.test.ts` and checked against the real
+command:
+
+- A change starts a 200 ms timer; further changes restart it, so a burst of saves causes one regeneration.
+- Only one generation runs at a time. A change that arrives while one is running is queued and runs after it.
+- A failed generation is logged and watching continues.
+- A watcher error ends the command with that error.
+- `--watch` cannot be combined with `--json`.
+
 #### Pipeline
 
 1. **Load config:** `loadConfig(workDir)` reads `.docgen.yaml` from the current directory.

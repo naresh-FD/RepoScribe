@@ -110,19 +110,31 @@ function writeArtifacts(workDir: string, config: any, result: GenerateResult): v
   }
 }
 
-async function watchAndRegenerate(
+/** Quiet period after the last file change before regenerating. */
+const WATCH_DEBOUNCE_MS = 200;
+
+/** Injection points so the watch loop can be tested without real file watchers or real time. */
+export interface WatchDependencies {
+  watch?: typeof fs.watch;
+  debounceMs?: number;
+}
+
+export async function watchAndRegenerate(
   config: any,
   workDir: string,
   logger: Logger,
-  generate: () => Promise<GenerateResult>
+  generate: () => Promise<GenerateResult>,
+  dependencies: WatchDependencies = {}
 ): Promise<never> {
+  const watch = dependencies.watch ?? fs.watch;
+  const debounceMs = dependencies.debounceMs ?? WATCH_DEBOUNCE_MS;
   let timer: NodeJS.Timeout | undefined;
   let running = false;
   let queued = false;
 
   const schedule = (changedPath: string): void => {
     if (timer) clearTimeout(timer);
-    timer = setTimeout(() => void regenerate(changedPath), 200);
+    timer = setTimeout(() => void regenerate(changedPath), debounceMs);
   };
 
   const regenerate = async (changedPath: string): Promise<void> => {
@@ -147,7 +159,7 @@ async function watchAndRegenerate(
 
   const watchers = config.languages.map((language: any) => {
     const source = path.resolve(workDir, language.source);
-    return fs.watch(source, { recursive: true }, (_event, fileName) => {
+    return watch(source, { recursive: true }, (_event, fileName) => {
       schedule(fileName?.toString() ?? language.source);
     });
   });
