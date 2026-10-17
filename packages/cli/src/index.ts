@@ -23,7 +23,7 @@ program
 program
   .command("generate")
   .description("Generate documentation from source code")
-  .option("-f, --format <formats...>", "Output format(s): markdown, html, pdf, confluence")
+  .option("-f, --format <formats...>", "Output format(s): markdown, html, pdf")
   .option("-o, --output <dir>", "Override output directory")
   .option("--mode <mode>", "Documentation mode: developer or exhaustive")
   .option("--json", "Output result as JSON (for CI pipelines)")

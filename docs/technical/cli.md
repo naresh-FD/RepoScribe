@@ -210,7 +210,7 @@ async function generateCommand(options: GenerateOptions): Promise<void>
 
 | Flag                    | Type     | Default | Description                                        |
 |-------------------------|----------|---------|----------------------------------------------------|
-| `-f, --format <formats...>` | string[] | (all enabled) | Output format(s): `markdown`, `html`, `pdf`, `confluence` |
+| `-f, --format <formats...>` | string[] | (all enabled) | Output format(s): `markdown`, `html`, `pdf`. `confluence` is accepted in the configuration but has no renderer and is rejected with a clear error |
 | `-o, --output <dir>`   | string   | (from config) | Override output directory                       |
 | `--json`                | boolean  | `false` | Output result as JSON (for CI pipelines)            |
 | `-v, --verbose`         | boolean  | `false` | Enable verbose logging                              |

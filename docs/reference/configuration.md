@@ -853,6 +853,12 @@ output:
 
 Atlassian Confluence publishing settings.
 
+> **Not implemented.** RepoScribe has no Confluence renderer and no `docgen publish` command; the CLI has
+> `init`, `generate`, `validate`, `diff` and `adr`. These settings are accepted by the configuration schema so
+> that existing files still load, but setting `output.confluence.enabled: true` (or running
+> `generate --format confluence`) makes every command that loads plugins stop with "Confluence output is not
+> available". The `docgen publish` entries below describe intended behaviour, not a current command.
+
 ---
 
 #### `output.confluence.enabled`
