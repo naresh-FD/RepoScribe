@@ -50,7 +50,7 @@ program
 program
   .command("adr")
   .description("Manage Architecture Decision Records")
-  .argument("<action>", "Action: new, list, update")
+  .argument("<action>", "Action: new, list")
   .argument("[title]", "ADR title (for 'new' action)")
   .option("-s, --status <status>", "ADR status", "proposed")
   .action(adrCommand);
