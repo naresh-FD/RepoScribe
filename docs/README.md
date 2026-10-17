@@ -2,7 +2,9 @@
 
 > Complete technical documentation for the DocGen universal documentation generator.
 
-**Total:** 17 documents | 15,355+ lines | 100% source coverage
+**Total:** 20 documents | 15,355+ lines | see [AUDIT.md](AUDIT.md) for what the coverage figure covers
+
+<!-- conduit-change: CONDUIT-2026-001 -->
 
 ---
 
@@ -19,8 +21,10 @@
 |----------|---------|-------|
 | [Core](technical/core.md) | `@docgen/core` | 2,283 |
 | [TypeScript Parser](technical/parser-typescript.md) | `@docgen/parser-typescript` | 1,301 |
-| Java Parser | `@docgen/parser-java` | Shipped |
+| [Java Parser](technical/parser-java.md) | `@docgen/parser-java` | 248 |
 | [Markdown Renderer](technical/renderer-markdown.md) | `@docgen/renderer-markdown` | 1,305 |
+| [HTML Renderer](technical/renderer-html.md) | `@docgen/renderer-html` | 177 |
+| [PDF Renderer](technical/renderer-pdf.md) | `@docgen/renderer-pdf` | 178 |
 | [CLI](technical/cli.md) | `@docgen/cli` | 778 |
 
 ### Specifications & References (Phase 2)
@@ -65,7 +69,10 @@ docs/
 ├── technical/
 │   ├── core.md                        ← @docgen/core deep reference
 │   ├── parser-typescript.md           ← @docgen/parser-typescript reference
+│   ├── parser-java.md                 ← @docgen/parser-java reference
 │   ├── renderer-markdown.md           ← @docgen/renderer-markdown reference
+│   ├── renderer-html.md               ← @docgen/renderer-html reference
+│   ├── renderer-pdf.md                ← @docgen/renderer-pdf reference
 │   └── cli.md                         ← @docgen/cli reference
 ├── specifications/
 │   └── docir-spec.md                  ← DocIR type specification
